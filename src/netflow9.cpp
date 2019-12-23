@@ -18,9 +18,8 @@ struct nf9_flow_data
 };
 
 int nf9_parse(nf9_state* state, nf9_parse_result** result, const uint8_t* buf,
-              size_t len, const struct sockaddr* peer, socklen_t peer_len)
+              size_t len, const struct sockaddr* addr)
 {
-    int asdf;
     return 0;
 }
 
@@ -38,7 +37,7 @@ nf9_value nf9_get_field(const nf9_parse_result* pr, int flowset, int flow,
                         int field)
 {
     nf9_value v;
-    v.dword = 0;
+    v.u32 = 0;
     return v;
 }
 
