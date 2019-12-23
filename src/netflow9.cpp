@@ -1,4 +1,5 @@
 #include "netflow9.h"
+#include <netinet/in.h>
 
 struct nf9_state
 {
@@ -43,6 +44,12 @@ nf9_value nf9_get_field(const nf9_parse_result* pr, int flowset, int flow,
 
 void nf9_free_parse_result(nf9_parse_result* pr)
 {
+}
+
+sockaddr_in nf9_get_addr(const nf9_parse_result* pr)
+{
+    sockaddr_in address = {};
+    return address;
 }
 
 struct nf9_stats
