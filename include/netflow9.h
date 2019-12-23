@@ -284,7 +284,6 @@ size_t nf9_get_num_flows(const nf9_parse_result* pr, int flowset);
 nf9_value nf9_get_field(const nf9_parse_result* pr, int flowset, int flow,
                         int field);
 
-
 enum nf9_stat_fields {
     NF9_STAT_PROCESSED_PACKETS,
     NF9_STAT_MALFORMED_PACKETS,
