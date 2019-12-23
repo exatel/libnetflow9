@@ -1,8 +1,9 @@
-#ifndef TEST_COMMON_H__
-#define TEST_COMMON_H__
-#include <netflow9/netflow9.h>
+#ifndef TEST_COMMON_H
+#define TEST_COMMON_H
 #include <tins/tins.h>
 #include <functional>
+#include <netflow9.h>
+#include <netinet/in.h>
 
 class General : public testing::Test
 {
