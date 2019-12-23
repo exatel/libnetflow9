@@ -44,3 +44,21 @@ nf9_value nf9_get_field(const nf9_parse_result* pr, int flowset, int flow,
 void nf9_free_parse_result(nf9_parse_result* pr)
 {
 }
+
+struct nf9_stats
+{
+};
+
+const nf9_stats* nf9_get_stats(const nf9_state* state)
+{
+    return NULL;
+}
+
+int nf9_get_stat(const nf9_stats* stats, int stat)
+{
+    return 0;
+}
+
+void nf9_free_stats(const nf9_stats* stats)
+{
+}

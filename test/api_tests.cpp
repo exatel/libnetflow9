@@ -23,7 +23,7 @@ std::vector<nf9_parse_result *> parse_pcap(nf9_state *state, std::string path)
     return parsed;
 }
 
-TEST(PCAPTest, basic_test)
+TEST(PCAPTest, BasicTest)
 {
     nf9_state *state = nf9_init(0);
     std::vector<nf9_parse_result *> parsed_pcap =
@@ -47,23 +47,75 @@ TEST(PCAPTest, basic_test)
     nf9_free(state);
 }
 
-TEST(PCAPTest, stats_test)
+TEST(PCAPTest, BasicStatsTest)
 {
-    // EXPECT_EQ(processor.stats().processed_flow_records, 4);
-    // EXPECT_EQ(processor.stats().processed_template_records, 4);
-    // EXPECT_EQ(processor.stats().processed_options_template_records, 2);
-    // EXPECT_EQ(processor.stats().missing_template_errors, 0);
-    // EXPECT_EQ(processor.stats().received_malformed_packets, 5);
-    //     Netflow::NetflowProcessor processor;
-    //     process_stream("testcases/Heap_Spray.pcapng", processor);
-    //     EXPECT_EQ(processor.stats().received_malformed_packets, 3);
-    //     process_stream("testcases/Heap_Spray_1.pcapng", processor);
-    //     EXPECT_EQ(processor.stats().received_malformed_packets, 19);
-    //     process_stream("testcases/super_.pcap", processor);
-    //     EXPECT_EQ(processor.stats().received_malformed_packets, 20);
+    nf9_state *state = nf9_init(0);
+    std::vector<nf9_parse_result *> parse_result =
+        parse_pcap(state, "testcases/1.pcap");
+
+    const nf9_stats *stats = nf9_get_stats(state);
+
+    EXPECT_EQ(nf9_get_stat(stats, NF9_STAT_TOTAL_RECORDS), 0 /* 4 */);
+    EXPECT_EQ(nf9_get_stat(stats, NF9_STAT_TOTAL_TEMPLATES), 0 /* 4 */);
+    EXPECT_EQ(nf9_get_stat(stats, NF9_STAT_TOTAL_OPTION_TEMPLATES), 0 /* 2 */);
+    EXPECT_EQ(nf9_get_stat(stats, NF9_STAT_MISSING_TEMPLATE_ERRORS), 0);
+    EXPECT_EQ(nf9_get_stat(stats, NF9_STAT_MALFORMED_PACKETS), 0 /* 5 */);
+
+    for (auto *pr : parse_result)
+        nf9_free_parse_result(pr);
+    nf9_free_stats(stats);
+    nf9_free(state);
 }
 
-TEST(PCAPTest, tamplate_matching_test)
+TEST(PCAPTest, Malformed1Test)
+{
+    nf9_state *state = nf9_init(0);
+    std::vector<nf9_parse_result *> parse_result =
+        parse_pcap(state, "testcases/malformed_1.pcap");
+
+    const nf9_stats *stats = nf9_get_stats(state);
+
+    EXPECT_EQ(nf9_get_stat(stats, NF9_STAT_MALFORMED_PACKETS), 0 /* 3 */);
+
+    for (auto *pr : parse_result)
+        nf9_free_parse_result(pr);
+    nf9_free_stats(stats);
+    nf9_free(state);
+}
+
+TEST(PCAPTest, Malformed2Test)
+{
+    nf9_state *state = nf9_init(0);
+    std::vector<nf9_parse_result *> parse_result =
+        parse_pcap(state, "testcases/malformed_2.pcap");
+
+    const nf9_stats *stats = nf9_get_stats(state);
+
+    EXPECT_EQ(nf9_get_stat(stats, NF9_STAT_MALFORMED_PACKETS), 0 /* 19 */);
+
+    for (auto *pr : parse_result)
+        nf9_free_parse_result(pr);
+    nf9_free_stats(stats);
+    nf9_free(state);
+}
+
+TEST(PCAPTest, Malformed3Test)
+{
+    nf9_state *state = nf9_init(0);
+    std::vector<nf9_parse_result *> parse_result =
+        parse_pcap(state, "testcases/malformed_3.pcap");
+
+    const nf9_stats *stats = nf9_get_stats(state);
+
+    EXPECT_EQ(nf9_get_stat(stats, NF9_STAT_MALFORMED_PACKETS), 0 /* 20 */);
+
+    for (auto *pr : parse_result)
+        nf9_free_parse_result(pr);
+    nf9_free_stats(stats);
+    nf9_free(state);
+}
+
+TEST(PCAPTest, TemplateMatchingTest)
 {
     // Netflow::UniqueStreamID test_id_1 = {256, 104, "2.1.3.8"};
     // Netflow::UniqueStreamID test_id_2 = {257, 104, "172.17.0.5"};

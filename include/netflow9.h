@@ -284,9 +284,20 @@ size_t nf9_get_num_flows(const nf9_parse_result* pr, int flowset);
 nf9_value nf9_get_field(const nf9_parse_result* pr, int flowset, int flow,
                         int field);
 
-typedef struct nf9_stats nf9_stats;
 
+enum nf9_stat_fields {
+    NF9_STAT_PROCESSED_PACKETS,
+    NF9_STAT_MALFORMED_PACKETS,
+    NF9_STAT_TOTAL_RECORDS,
+    NF9_STAT_TOTAL_TEMPLATES,
+    NF9_STAT_TOTAL_OPTION_TEMPLATES,
+    NF9_STAT_MISSING_TEMPLATE_ERRORS,
+};
+
+typedef struct nf9_stats nf9_stats;
 const nf9_stats* nf9_get_stats(const nf9_state* state);
+int nf9_get_stat(const nf9_stats* stats, int stat);
+void nf9_free_stats(const nf9_stats*);
 
 #ifdef __cplusplus
 }
