@@ -32,8 +32,9 @@ std::vector<NetflowPacket> get_packets(const char *pcap_path)
             addr.sin_port = udp->sport();
 
             if (contents != nullptr)
-                ret.emplace_back(NetflowPacket{contents, udp_payload.payload().size(),
-                                        *(sockaddr *)(&addr)});
+                ret.emplace_back(NetflowPacket{contents,
+                                               udp_payload.payload().size(),
+                                               *(sockaddr *)(&addr)});
         }
     }
 
