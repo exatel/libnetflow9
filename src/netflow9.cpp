@@ -14,7 +14,7 @@ void nf9_free(nf9_state* state)
 {
 }
 
-struct nf9_flow_data
+struct nf9_parse_result
 {
 };
 
