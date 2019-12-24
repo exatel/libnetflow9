@@ -46,10 +46,10 @@ void nf9_free_parse_result(nf9_parse_result* pr)
 {
 }
 
-sockaddr_in nf9_get_addr(const nf9_parse_result* pr)
+sockaddr nf9_get_addr(const nf9_parse_result* pr)
 {
     sockaddr_in address = {};
-    return address;
+    return *reinterpret_cast<sockaddr*>(&address);
 }
 
 struct nf9_stats
