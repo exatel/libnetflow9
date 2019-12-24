@@ -3,15 +3,19 @@
 
 struct nf9_state
 {
+    int flags;
 };
 
 nf9_state* nf9_init(int flags)
 {
-    return NULL;
+    nf9_state* st = new nf9_state;
+    st->flags = flags;
+    return st;
 }
 
 void nf9_free(nf9_state* state)
 {
+    delete state;
 }
 
 struct nf9_parse_result
