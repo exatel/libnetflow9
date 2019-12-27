@@ -1,22 +1,7 @@
+#include <netflow9.h>
 #include <netinet/in.h>
 #include <vector>
-#include "netflow9.h"
-
-struct nf9_stats
-{
-    int processed_packets = 0;
-    int malformed_packets = 0;
-    int records = 0;
-    int templates = 0;
-    int option_templates = 0;
-    int missing_template_errors = 0;
-};
-
-struct nf9_state
-{
-    int flags;
-    nf9_stats stats;
-};
+#include "types.h"
 
 nf9_state* nf9_init(int flags)
 {
@@ -29,17 +14,6 @@ void nf9_free(nf9_state* state)
 {
     delete state;
 }
-
-struct flowset
-{
-    nf9_flowset_type type;
-};
-
-struct nf9_parse_result
-{
-    std::vector<flowset> flowsets;
-    sockaddr addr;
-};
 
 int nf9_parse(nf9_state* state, nf9_parse_result** result, const uint8_t* buf,
               size_t len, const struct sockaddr* addr)
