@@ -1,5 +1,6 @@
-#include "netflow9.h"
 #include <netinet/in.h>
+#include <vector>
+#include "netflow9.h"
 
 struct nf9_stats
 {
@@ -29,19 +30,33 @@ void nf9_free(nf9_state* state)
     delete state;
 }
 
+struct flowset
+{
+    nf9_flowset_type type;
+};
+
 struct nf9_parse_result
 {
+    std::vector<flowset> flowsets;
+    sockaddr addr;
 };
 
 int nf9_parse(nf9_state* state, nf9_parse_result** result, const uint8_t* buf,
               size_t len, const struct sockaddr* addr)
 {
+    *result = new nf9_parse_result;
+    (*result)->addr = *addr;
     return 0;
 }
 
 size_t nf9_get_num_flowsets(const nf9_parse_result* pr)
 {
     return 0;
+}
+
+int nf9_get_flowset_type(const nf9_parse_result* pr, int flowset)
+{
+    return pr->flowsets[flowset].type;
 }
 
 size_t nf9_get_num_flows(const nf9_parse_result* pr, int flowset)
@@ -59,13 +74,12 @@ nf9_value nf9_get_field(const nf9_parse_result* pr, int flowset, int flow,
 
 void nf9_free_parse_result(nf9_parse_result* pr)
 {
+    delete pr;
 }
 
 sockaddr nf9_get_addr(const nf9_parse_result* pr)
 {
-    sockaddr_in address = {};
-    address.sin_family = AF_INET;
-    return *reinterpret_cast<sockaddr*>(&address);
+    return pr->addr;
 }
 
 const nf9_stats* nf9_get_stats(const nf9_state* state)

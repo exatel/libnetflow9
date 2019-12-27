@@ -280,6 +280,15 @@ union nf9_value {
 };
 
 size_t nf9_get_num_flowsets(const nf9_parse_result* pr);
+
+enum nf9_flowset_type {
+    NF9_FLOWSET_TEMPLATE,
+    NF9_FLOWSET_OPTIONS,
+    NF9_FLOWSET_DATA,
+};
+
+int nf9_get_flowset_type(const nf9_parse_result* pr, int flowset);
+
 size_t nf9_get_num_flows(const nf9_parse_result* pr, int flowset);
 nf9_value nf9_get_field(const nf9_parse_result* pr, int flowset, int flow,
                         int field);

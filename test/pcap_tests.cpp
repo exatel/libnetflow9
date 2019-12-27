@@ -69,7 +69,7 @@ TEST_F(PCAPTest, BasicTest)
 {
     std::vector<ParseResult> parsed_pcap = parse_pcap("testcases/1.pcap");
     sockaddr_in addr_v4 = ip4_addr(nf9_get_addr(parsed_pcap[6].get()));
-    EXPECT_EQ(addr_v4.sin_addr.s_addr, 0 /* inet_addr("172.17.0.5") */);
+    EXPECT_EQ(addr_v4.sin_addr.s_addr, inet_addr("172.17.0.5"));
     std::vector<uint32_t> src_ips;
     for (const auto &parse_result : parsed_pcap) {
         for (size_t flowset = 0;
