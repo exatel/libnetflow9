@@ -17,7 +17,16 @@ struct ParseResultDeleter
     }
 };
 
+struct StatsDeleter
+{
+    void operator()(const nf9_stats *stats)
+    {
+        nf9_free_stats(stats);
+    }
+};
+
 using ParseResult = std::unique_ptr<nf9_parse_result, ParseResultDeleter>;
+using Stats = std::unique_ptr<const nf9_stats, StatsDeleter>;
 
 class PCAPTest : public ::testing::Test
 {
@@ -48,6 +57,11 @@ protected:
         return parsed;
     }
 
+    Stats get_stats()
+    {
+        return Stats(nf9_get_stats(state_));
+    }
+
     nf9_state *state_;
 };
 
@@ -76,49 +90,43 @@ TEST_F(PCAPTest, BasicTest)
 TEST_F(PCAPTest, BasicStatsTest)
 {
     std::vector<ParseResult> parse_result = parse_pcap("testcases/1.pcap");
+    Stats stats = get_stats();
 
-    const nf9_stats *stats = nf9_get_stats(state_);
-
-    EXPECT_EQ(nf9_get_stat(stats, NF9_STAT_TOTAL_RECORDS), 0 /* 4 */);
-    EXPECT_EQ(nf9_get_stat(stats, NF9_STAT_TOTAL_TEMPLATES), 0 /* 4 */);
-    EXPECT_EQ(nf9_get_stat(stats, NF9_STAT_TOTAL_OPTION_TEMPLATES), 0 /* 2 */);
-    EXPECT_EQ(nf9_get_stat(stats, NF9_STAT_MISSING_TEMPLATE_ERRORS), 0);
-    EXPECT_EQ(nf9_get_stat(stats, NF9_STAT_MALFORMED_PACKETS), 0 /* 5 */);
-
-    nf9_free_stats(stats);
+    EXPECT_EQ(nf9_get_stat(stats.get(), NF9_STAT_TOTAL_RECORDS), 0 /* 4 */);
+    EXPECT_EQ(nf9_get_stat(stats.get(), NF9_STAT_TOTAL_TEMPLATES), 0 /* 4 */);
+    EXPECT_EQ(nf9_get_stat(stats.get(), NF9_STAT_TOTAL_OPTION_TEMPLATES),
+              0 /* 2 */);
+    EXPECT_EQ(nf9_get_stat(stats.get(), NF9_STAT_MISSING_TEMPLATE_ERRORS), 0);
+    EXPECT_EQ(nf9_get_stat(stats.get(), NF9_STAT_MALFORMED_PACKETS), 0 /* 5 */);
 }
 
 TEST_F(PCAPTest, Malformed1Test)
 {
     std::vector<ParseResult> parse_result =
         parse_pcap("testcases/malformed_1.pcap");
+    Stats stats = get_stats();
 
-    const nf9_stats *stats = nf9_get_stats(state_);
-    EXPECT_EQ(nf9_get_stat(stats, NF9_STAT_MALFORMED_PACKETS), 0 /* 3 */);
-
-    nf9_free_stats(stats);
+    EXPECT_EQ(nf9_get_stat(stats.get(), NF9_STAT_MALFORMED_PACKETS), 0 /* 3 */);
 }
 
 TEST_F(PCAPTest, Malformed2Test)
 {
     std::vector<ParseResult> parse_result =
         parse_pcap("testcases/malformed_2.pcap");
+    Stats stats = get_stats();
 
-    const nf9_stats *stats = nf9_get_stats(state_);
-    EXPECT_EQ(nf9_get_stat(stats, NF9_STAT_MALFORMED_PACKETS), 0 /* 19 */);
-
-    nf9_free_stats(stats);
+    EXPECT_EQ(nf9_get_stat(stats.get(), NF9_STAT_MALFORMED_PACKETS),
+              0 /* 19 */);
 }
 
 TEST_F(PCAPTest, Malformed3Test)
 {
     std::vector<ParseResult> parse_result =
         parse_pcap("testcases/malformed_3.pcap");
+    Stats stats = get_stats();
 
-    const nf9_stats *stats = nf9_get_stats(state_);
-    EXPECT_EQ(nf9_get_stat(stats, NF9_STAT_MALFORMED_PACKETS), 0 /* 20 */);
-
-    nf9_free_stats(stats);
+    EXPECT_EQ(nf9_get_stat(stats.get(), NF9_STAT_MALFORMED_PACKETS),
+              0 /* 20 */);
 }
 
 TEST_F(PCAPTest, Malformed4Test)
@@ -128,11 +136,9 @@ TEST_F(PCAPTest, Malformed4Test)
      */
     std::vector<ParseResult> parse_result =
         parse_pcap("testcases/malformed_4.pcap");
+    Stats stats = get_stats();
 
-    const nf9_stats *stats = nf9_get_stats(state_);
-    EXPECT_EQ(nf9_get_stat(stats, NF9_STAT_MALFORMED_PACKETS), 0 /* 1 */);
-
-    nf9_free_stats(stats);
+    EXPECT_EQ(nf9_get_stat(stats.get(), NF9_STAT_MALFORMED_PACKETS), 0 /* 1 */);
 }
 
 TEST_F(PCAPTest, Malformed5Test)
@@ -142,11 +148,9 @@ TEST_F(PCAPTest, Malformed5Test)
      */
     std::vector<ParseResult> parse_result =
         parse_pcap("testcases/malformed_5.pcap");
+    Stats stats = get_stats();
 
-    const nf9_stats *stats = nf9_get_stats(state_);
-    EXPECT_EQ(nf9_get_stat(stats, NF9_STAT_MALFORMED_PACKETS), 0 /* 1 */);
-
-    nf9_free_stats(stats);
+    EXPECT_EQ(nf9_get_stat(stats.get(), NF9_STAT_MALFORMED_PACKETS), 0 /* 1 */);
 }
 
 TEST_F(PCAPTest, TemplateMatchingTest)
