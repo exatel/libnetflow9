@@ -64,6 +64,7 @@ void nf9_free_parse_result(nf9_parse_result* pr)
 sockaddr nf9_get_addr(const nf9_parse_result* pr)
 {
     sockaddr_in address = {};
+    address.sin_family = AF_INET;
     return *reinterpret_cast<sockaddr*>(&address);
 }
 

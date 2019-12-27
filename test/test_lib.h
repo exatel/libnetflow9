@@ -1,9 +1,11 @@
 #ifndef TEST_COMMON_H
 #define TEST_COMMON_H
+
 #include <netflow9.h>
 #include <netinet/in.h>
 #include <tins/tins.h>
 #include <functional>
+#include <stdexcept>
 
 struct NetflowPacket
 {
@@ -12,7 +14,7 @@ struct NetflowPacket
     sockaddr addr;
 };
 
-std::vector<NetflowPacket> get_packets(const char *pcap_path)
+static std::vector<NetflowPacket> get_packets(const char *pcap_path)
 {
     using namespace Tins;
 
@@ -39,6 +41,16 @@ std::vector<NetflowPacket> get_packets(const char *pcap_path)
     }
 
     return ret;
+}
+
+static sockaddr_in ip4_addr(const sockaddr &addr)
+{
+    if (addr.sa_family != AF_INET)
+        throw std::invalid_argument("address is not IPv4");
+
+    sockaddr_in addr_v4;
+    addr_v4 = *reinterpret_cast<const sockaddr_in *>(&addr);
+    return addr_v4;
 }
 
 #endif
