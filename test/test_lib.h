@@ -13,8 +13,7 @@
 
 struct pcap_packet
 {
-    const uint8_t *data;
-    size_t len;
+    std::vector<uint8_t> data_ = {};
     nf9_addr addr;
 };
 

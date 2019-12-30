@@ -23,8 +23,7 @@ std::vector<pcap_packet> get_packets(const char *pcap_path)
             addr.in = in_addr;
 
             if (contents != nullptr)
-                ret.emplace_back(
-                    pcap_packet{contents, udp_payload.payload().size(), addr});
+                ret.emplace_back(pcap_packet{udp_payload.payload(), addr});
         }
     }
 

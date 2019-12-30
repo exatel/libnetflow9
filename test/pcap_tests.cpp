@@ -48,8 +48,8 @@ protected:
 
         for (const auto &packet : packets) {
             nf9_parse_result *result;
-            if (nf9_parse(state_, &result, packet.data, packet.len,
-                          &packet.addr))
+            if (nf9_parse(state_, &result, packet.data_.data(),
+                          packet.data_.size(), &packet.addr))
                 continue;
             parsed.emplace_back(result);
         }
@@ -68,7 +68,7 @@ protected:
 TEST_F(pcap_test, basic_test)
 {
     std::vector<parse_result> parsed_pcap = parse_pcap("testcases/1.pcap");
-    nf9_addr addr = nf9_get_addr(parsed_pcap[6].get());
+    nf9_addr addr = nf9_get_addr(parsed_pcap.at(0).get());
     EXPECT_EQ(addr.in.sin_addr.s_addr, inet_addr("172.17.0.5"));
     std::vector<uint32_t> src_ips;
     for (const auto &pr : parsed_pcap) {
@@ -91,12 +91,11 @@ TEST_F(pcap_test, basic_stats_test)
     std::vector<parse_result> pr = parse_pcap("testcases/1.pcap");
     stats st = get_stats();
 
-    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_TOTAL_RECORDS), 0 /* 4 */);
-    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_TOTAL_TEMPLATES), 0 /* 4 */);
-    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_TOTAL_OPTION_TEMPLATES),
-              0 /* 2 */);
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_TOTAL_RECORDS), 4);
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_TOTAL_TEMPLATES), 2);
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_TOTAL_OPTION_TEMPLATES), 2);
     EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MISSING_TEMPLATE_ERRORS), 0);
-    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 0 /* 5 */);
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 0);
 }
 
 TEST_F(pcap_test, malformed_1_test)
@@ -131,7 +130,7 @@ TEST_F(pcap_test, malformed_4_test)
     std::vector<parse_result> pr = parse_pcap("testcases/malformed_4.pcap");
     stats st = get_stats();
 
-    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 0 /* 1 */);
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 1);
 }
 
 TEST_F(pcap_test, malformed_5_test)
