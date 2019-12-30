@@ -29,7 +29,7 @@ struct flowset
 struct nf9_parse_result
 {
     std::vector<flowset> flowsets;
-    sockaddr addr;
+    nf9_addr addr;
 };
 
 #endif

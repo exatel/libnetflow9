@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <netinet/in.h>
 #include <sys/socket.h>
 
 #ifdef __cplusplus
@@ -20,8 +21,14 @@ void nf9_free(nf9_state* state);
 
 typedef struct nf9_parse_result nf9_parse_result;
 
+typedef union nf9_addr {
+    sa_family_t family;
+    struct sockaddr_in in;
+    struct sockaddr_in6 in6;
+} nf9_addr;
+
 int nf9_parse(nf9_state* state, nf9_parse_result** result, const uint8_t* buf,
-              size_t len, const struct sockaddr* addr);
+              size_t len, const nf9_addr* addr);
 
 void nf9_free_parse_result(nf9_parse_result* result);
 
@@ -293,7 +300,7 @@ size_t nf9_get_num_flows(const nf9_parse_result* pr, int flowset);
 nf9_value nf9_get_field(const nf9_parse_result* pr, int flowset, int flow,
                         int field);
 
-struct sockaddr nf9_get_addr(const nf9_parse_result* pr);
+nf9_addr nf9_get_addr(const nf9_parse_result* pr);
 
 enum nf9_stat_fields {
     NF9_STAT_PROCESSED_PACKETS,

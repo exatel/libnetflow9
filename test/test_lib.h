@@ -15,14 +15,11 @@ struct PCAPPacket
 {
     const uint8_t *data;
     size_t len;
-    sockaddr addr;
+    nf9_addr addr;
 };
 
 // Get packets from file.
 std::vector<PCAPPacket> get_packets(const char *pcap_path);
-
-// Convert a sockaddr to sockaddr_in.
-sockaddr_in ip4_addr(const sockaddr &addr);
 
 struct NetflowHeader
 {
