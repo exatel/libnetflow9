@@ -248,7 +248,7 @@ private:
                    templateBytes.size())) +  // Flowset length in
                                              // bytes (including two 2-byte
                                              // fields at beginning)
-               templateBytes;                // DataTemplate bytes.
+               templateBytes;
     }
 
     Bytes buildDataFlowset(const DataFlowset &df) const
@@ -257,9 +257,12 @@ private:
         for (const Bytes &value : df.values)
             bytes += value;
 
+        Bytes paddingBytes = padding(2 * sizeof(uint16_t) + bytes.size());
+
         return toBytes(htons(df.flowsetId)) +
-               toBytes(htons(sizeof(uint16_t) * 2 + bytes.size())) + bytes;
-        // TODO: Padding.
+               toBytes(htons(sizeof(uint16_t) * 2 + bytes.size() +
+                             paddingBytes.size())) +
+               bytes + paddingBytes;
     }
 
     Bytes buildDataTemplate(const DataTemplate &t) const
@@ -289,12 +292,14 @@ private:
             option += toBytes(htons(fd.second));
         }
 
+        Bytes paddingBytes =
+            padding(5 * sizeof(uint16_t) + scope.size() + option.size());
+
         return toBytes(htons(1))  // FlowsetID = 1 for all option templates
                + toBytes(htons(5 * sizeof(uint16_t) + scope.size() +
-                               option.size())) +
+                               option.size() + paddingBytes.size())) +
                toBytes(htons(t.templateId)) + toBytes(htons(scope.size())) +
-               toBytes(htons(option.size())) + scope + option;
-        // TODO: Padding.
+               toBytes(htons(option.size())) + scope + option + paddingBytes;
     }
 
     // Convert any integer value to bytes.
@@ -307,6 +312,12 @@ private:
         } u;
         u.value = t;
         return Bytes(u.bytes, u.bytes + sizeof(T));
+    }
+
+    static Bytes padding(size_t record_size)
+    {
+        size_t padding = sizeof(uint32_t) - (record_size % sizeof(uint32_t));
+        return Bytes(padding, 0x0);
     }
 
     DataTemplateFlowset &lastDataTemplateFlowset()
