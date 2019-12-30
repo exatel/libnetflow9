@@ -29,3 +29,50 @@ std::vector<pcap_packet> get_packets(const char *pcap_path)
 
     return ret;
 }
+
+nf9_addr make_inet_addr(const char *addr, uint16_t port)
+{
+    sockaddr_in in = {};
+    in.sin_family = AF_INET;
+    in.sin_port = port;
+    in.sin_addr.s_addr = inet_addr(addr);
+
+    nf9_addr a;
+    a.in = in;
+    return a;
+}
+
+nf9_addr make_inet6_addr(const char *addr, uint16_t port)
+{
+    sockaddr_in6 in = {};
+    in.sin6_family = AF_INET6;
+    in.sin6_port = port;
+    if (!inet_pton(AF_INET6, addr, &in.sin6_addr))
+        throw std::invalid_argument(
+            std::string("IPv6 addres conversion error: ") + strerror(errno));
+
+    nf9_addr a;
+    a.in6 = in;
+    return a;
+}
+
+std::string address_to_string(const nf9_addr &addr)
+{
+    if (addr.family == AF_INET) {
+        char buf[INET_ADDRSTRLEN];
+        if (!inet_ntop(addr.in.sin_family, &addr.in.sin_addr, buf, sizeof(buf)))
+            throw std::runtime_error(std::string("address conversion error: ") +
+                                     strerror(errno));
+        return std::string(buf);
+    }
+    if (addr.family == AF_INET6) {
+        char buf[INET6_ADDRSTRLEN];
+        if (!inet_ntop(addr.in6.sin6_family, &addr.in6.sin6_addr, buf,
+                       sizeof(buf)))
+            throw std::runtime_error(std::string("address conversion error: ") +
+                                     strerror(errno));
+        return std::string(buf);
+    }
+
+    throw std::runtime_error("unsupported address family");
+}

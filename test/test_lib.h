@@ -2,6 +2,7 @@
 #define TEST_COMMON_H
 
 #include <arpa/inet.h>
+#include <gtest/gtest.h>
 #include <netflow9.h>
 #include <netinet/in.h>
 #include <tins/tins.h>
@@ -19,6 +20,63 @@ struct pcap_packet
 
 // Get packets from file.
 std::vector<pcap_packet> get_packets(const char *pcap_path);
+
+// Create a IPv4 nf9_addr from a string of the form "a.b.c.d".
+nf9_addr make_inet_addr(const char *addr, uint16_t port = 0);
+
+// Create a IPv6 nf9_addr from a string.
+nf9_addr make_inet6_addr(const char *addr, uint16_t port = 0);
+
+// Convert a binary address to string.
+std::string address_to_string(const nf9_addr &addr);
+
+struct parse_result_deleter
+{
+    void operator()(nf9_parse_result *result)
+    {
+        nf9_free_parse_result(result);
+    }
+};
+
+struct stats_deleter
+{
+    void operator()(const nf9_stats *stats)
+    {
+        nf9_free_stats(stats);
+    }
+};
+
+using parse_result = std::unique_ptr<nf9_parse_result, parse_result_deleter>;
+using stats = std::unique_ptr<const nf9_stats, stats_deleter>;
+
+class test : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        state_ = nf9_init(0);
+    }
+
+    void TearDown() override
+    {
+        nf9_free(state_);
+    }
+
+    stats get_stats()
+    {
+        return stats(nf9_get_stats(state_));
+    }
+
+    parse_result parse(const uint8_t *buf, size_t len, const nf9_addr *addr)
+    {
+        nf9_parse_result *pr;
+        if (nf9_parse(state_, &pr, buf, len, addr))
+            return parse_result(nullptr);
+        return parse_result(pr);
+    }
+
+    nf9_state *state_;
+};
 
 struct netflow_header
 {

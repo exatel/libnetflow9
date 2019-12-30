@@ -9,38 +9,9 @@
 #include <string>
 #include "test_lib.h"
 
-struct parse_result_deleter
-{
-    void operator()(nf9_parse_result *result)
-    {
-        nf9_free_parse_result(result);
-    }
-};
-
-struct stats_deleter
-{
-    void operator()(const nf9_stats *stats)
-    {
-        nf9_free_stats(stats);
-    }
-};
-
-using parse_result = std::unique_ptr<nf9_parse_result, parse_result_deleter>;
-using stats = std::unique_ptr<const nf9_stats, stats_deleter>;
-
-class pcap_test : public ::testing::Test
+class pcap_test : public test
 {
 protected:
-    void SetUp() override
-    {
-        state_ = nf9_init(0);
-    }
-
-    void TearDown() override
-    {
-        nf9_free(state_);
-    }
-
     std::vector<parse_result> parse_pcap(std::string path)
     {
         auto packets = get_packets(path.c_str());
@@ -56,13 +27,6 @@ protected:
 
         return parsed;
     }
-
-    stats get_stats()
-    {
-        return stats(nf9_get_stats(state_));
-    }
-
-    nf9_state *state_;
 };
 
 TEST_F(pcap_test, basic_test)
