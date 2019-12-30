@@ -1,10 +1,10 @@
 #include "test_lib.h"
 
-std::vector<PCAPPacket> get_packets(const char *pcap_path)
+std::vector<pcap_packet> get_packets(const char *pcap_path)
 {
     using namespace Tins;
 
-    std::vector<PCAPPacket> ret;
+    std::vector<pcap_packet> ret;
 
     FileSniffer sniffer(pcap_path);
     for (const Tins::Packet &packet : sniffer) {
@@ -24,7 +24,7 @@ std::vector<PCAPPacket> get_packets(const char *pcap_path)
 
             if (contents != nullptr)
                 ret.emplace_back(
-                    PCAPPacket{contents, udp_payload.payload().size(), addr});
+                    pcap_packet{contents, udp_payload.payload().size(), addr});
         }
     }
 

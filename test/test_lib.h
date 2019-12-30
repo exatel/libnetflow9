@@ -11,7 +11,7 @@
 #include <string>
 #include <variant>
 
-struct PCAPPacket
+struct pcap_packet
 {
     const uint8_t *data;
     size_t len;
@@ -19,9 +19,9 @@ struct PCAPPacket
 };
 
 // Get packets from file.
-std::vector<PCAPPacket> get_packets(const char *pcap_path);
+std::vector<pcap_packet> get_packets(const char *pcap_path);
 
-struct NetflowHeader
+struct netflow_header
 {
     uint16_t version;
     uint16_t count;
@@ -32,133 +32,135 @@ struct NetflowHeader
 };
 
 // Objects of this class can build Netflow9 packets for unit tests.
-class NetflowPacketBuilder
+class netflow_packet_builder
 {
 public:
-    NetflowPacketBuilder() : timestamp_(time(nullptr))
+    netflow_packet_builder() : timestamp_(time(nullptr))
     {
     }
 
     // Set the Netflow version in header (default 9).
-    NetflowPacketBuilder &setNetflowVersion(uint16_t version)
+    netflow_packet_builder &set_netflow_version(uint16_t version)
     {
         version_ = version;
         return *this;
     }
 
     // Set the system uptime in header (default 0).
-    NetflowPacketBuilder &setSystemUptime(uint32_t uptime)
+    netflow_packet_builder &set_system_uptime(uint32_t uptime)
     {
         uptime_ = uptime;
         return *this;
     }
 
     // Set the unix timestamp in header (default now).
-    NetflowPacketBuilder &setUnixTimestamp(uint32_t timestamp)
+    netflow_packet_builder &set_unix_timestamp(uint32_t timestamp)
     {
         timestamp_ = timestamp;
         return *this;
     }
 
     // Set the sequence number in header (default 0).
-    NetflowPacketBuilder &setSequenceNumber(uint32_t sequence)
+    netflow_packet_builder &set_sequence_number(uint32_t sequence)
     {
         sequence_ = sequence;
         return *this;
     }
 
-    // Set the sourceID in header (default 0).
-    NetflowPacketBuilder &setSourceID(uint32_t sourceId)
+    // Set the source_id in header (default 0).
+    netflow_packet_builder &set_source_id(uint32_t source_id)
     {
-        sourceId_ = sourceId;
+        source_id_ = source_id;
         return *this;
     }
 
     // Begin a new template flowset with given id.
-    NetflowPacketBuilder &addDataTemplateFlowset(uint16_t flowsetId)
+    netflow_packet_builder &add_data_template_flowset(uint16_t flowset_id)
     {
-        if (flowsetId > 255)
-            throw std::invalid_argument("flowsetId must be <= 255");
-        records_.push_back(DataTemplateFlowset{flowsetId, {}});
+        if (flowset_id > 255)
+            throw std::invalid_argument("flowset_id must be <= 255");
+        records_.push_back(data_template_flowset{flowset_id, {}});
         return *this;
     }
 
     // Begin a new data template in last flowset.  Fails if
-    // ``addDataTemplateFlowset`` was not yet called.
-    NetflowPacketBuilder &addDataTemplate(uint16_t templateId)
+    // ``add_data_template_flowset`` was not yet called.
+    netflow_packet_builder &add_data_template(uint16_t template_id)
     {
-        if (templateId <= 255)
-            throw std::invalid_argument("templateId must be > 255");
+        if (template_id <= 255)
+            throw std::invalid_argument("template_id must be > 255");
         if (records_.empty())
             throw std::runtime_error("no flowsets");
 
-        DataTemplateFlowset &flowset = lastDataTemplateFlowset();
-        flowset.templates.push_back(DataTemplate{templateId, {}});
+        data_template_flowset &flowset = last_data_template_flowset();
+        flowset.templates.push_back(data_template{template_id, {}});
         return *this;
     }
 
     // Add a field to the latest data template.  Fails if
-    // ``addDataTemplate`` was not yet called.
-    NetflowPacketBuilder &addDataTemplateField(uint16_t type, uint16_t length)
+    // ``add_data_template`` was not yet called.
+    netflow_packet_builder &add_data_template_field(uint16_t type,
+                                                    uint16_t length)
     {
         if (records_.empty())
             throw std::runtime_error("no flowsets");
-        if (lastDataTemplateFlowset().templates.empty())
+        if (last_data_template_flowset().templates.empty())
             throw std::runtime_error("no templates in last flowset");
 
-        DataTemplate &tmpl = lastDataTemplateFlowset().templates.back();
+        data_template &tmpl = last_data_template_flowset().templates.back();
         tmpl.fields.push_back({type, length});
         return *this;
     }
 
     // Begin a new data flowset with given id.
-    NetflowPacketBuilder &addDataFlowset(uint16_t flowsetId)
+    netflow_packet_builder &add_data_flowset(uint16_t flowset_id)
     {
-        records_.push_back(DataFlowset{flowsetId, {}});
+        records_.push_back(data_flowset{flowset_id, {}});
         return *this;
     }
 
     // Add a field to latest data flowset.  Fails if
-    // ``addDataFlowset`` was not yet called.
+    // ``add_data_flowset`` was not yet called.
     template <typename T>
-    NetflowPacketBuilder &addDataField(T value)
+    netflow_packet_builder &add_data_field(T value)
     {
         if (records_.empty())
             throw std::runtime_error("no flowsets");
 
-        Bytes bytes = toBytes(value);
-        lastDataFlowset().values.emplace_back(bytes);
+        bytes value_bytes = to_bytes(value);
+        last_data_flowset().values.emplace_back(value_bytes);
         return *this;
     }
 
     // Begin a new option template with given id.
-    NetflowPacketBuilder &addOptionTemplate(uint16_t templateId)
+    netflow_packet_builder &add_option_template(uint16_t template_id)
     {
-        if (templateId <= 255)
-            throw std::invalid_argument("templateId must be > 255");
+        if (template_id <= 255)
+            throw std::invalid_argument("template_id must be > 255");
 
-        records_.push_back(OptionTemplate{templateId, {}, {}});
+        records_.push_back(option_template{template_id, {}, {}});
         return *this;
     }
 
     // Add a scope field to the latest option template.  Fails if
-    // ``addOptionTemplate`` was not yet called.
-    NetflowPacketBuilder &addOptionScopeField(uint16_t type, uint16_t length)
+    // ``add_option_template`` was not yet called.
+    netflow_packet_builder &add_option_scope_field(uint16_t type,
+                                                   uint16_t length)
     {
         if (type == 0 || type > 5)
             throw std::invalid_argument(
                 "scope field type must be > 0 and <= 5");
 
-        OptionTemplate &tmpl = lastOptionTemplate();
-        tmpl.scopeFields.push_back({type, length});
+        option_template &tmpl = last_option_template();
+        tmpl.scope_fields.push_back({type, length});
         return *this;
     }
 
     // Add a field to the latest data template.  Fails if
-    // ``addDataTemplate`` was not yet called.
-    NetflowPacketBuilder &addOptionField(uint16_t type, uint16_t length)
+    // ``add_data_template`` was not yet called.
+    netflow_packet_builder &add_option_field(uint16_t type, uint16_t length)
     {
-        OptionTemplate &tmpl = lastOptionTemplate();
+        option_template &tmpl = last_option_template();
         tmpl.fields.push_back({type, length});
         return *this;
     }
@@ -166,178 +168,179 @@ public:
     // Build the entire packet.
     std::vector<uint8_t> build() const
     {
-        Bytes header = buildHeader();
-        Bytes records = buildRecords();
+        bytes header = build_header();
+        bytes records = build_records();
         auto packet = header + records;
         return {packet.begin(), packet.end()};
     }
 
 private:
-    using Bytes = std::basic_string<uint8_t>;
-    using FieldDef = std::pair<uint16_t, uint16_t>;  // Field type, field length
+    using bytes = std::basic_string<uint8_t>;
+    using field_def =
+        std::pair<uint16_t, uint16_t>;  // Field type, field length
 
-    struct DataTemplate
+    struct data_template
     {
-        uint16_t templateId;
-        std::vector<FieldDef> fields;
+        uint16_t template_id;
+        std::vector<field_def> fields;
     };
 
-    struct OptionTemplate
+    struct option_template
     {
-        uint16_t templateId;
-        std::vector<FieldDef> scopeFields;
-        std::vector<FieldDef> fields;
+        uint16_t template_id;
+        std::vector<field_def> scope_fields;
+        std::vector<field_def> fields;
     };
 
-    struct DataTemplateFlowset
+    struct data_template_flowset
     {
-        uint16_t flowsetId;
-        std::vector<DataTemplate> templates;
+        uint16_t flowset_id;
+        std::vector<data_template> templates;
     };
 
-    struct DataFlowset
+    struct data_flowset
     {
-        uint16_t flowsetId;  // = templateId
-        std::vector<Bytes> values;
+        uint16_t flowset_id;  // = template_id
+        std::vector<bytes> values;
     };
 
-    using Record =
-        std::variant<DataTemplateFlowset, DataFlowset, OptionTemplate>;
+    using record =
+        std::variant<data_template_flowset, data_flowset, option_template>;
 
-    Bytes buildHeader() const
+    bytes build_header() const
     {
-        NetflowHeader hd;
+        netflow_header hd;
         hd.version = htons(version_);
         hd.count = htons(records_.size());
         hd.uptime = htonl(uptime_);
         hd.timestamp = htonl(timestamp_);
         hd.sequence = htonl(sequence_);
-        hd.source_id = htonl(sourceId_);
-        return Bytes(reinterpret_cast<const uint8_t *>(&hd),
+        hd.source_id = htonl(source_id_);
+        return bytes(reinterpret_cast<const uint8_t *>(&hd),
                      reinterpret_cast<const uint8_t *>(&hd) + sizeof(hd));
     }
 
-    Bytes buildRecords() const
+    bytes build_records() const
     {
-        Bytes ret;
-        for (const Record &record : records_) {
-            if (record.index() == 0)
-                ret += buildDataTemplateFlowset(
-                    std::get<DataTemplateFlowset>(record));
-            else if (record.index() == 1)
-                ret += buildDataFlowset(std::get<DataFlowset>(record));
-            else if (record.index() == 2)
-                ret += buildOptionTemplate(std::get<OptionTemplate>(record));
+        bytes ret;
+        for (const record &rec : records_) {
+            if (rec.index() == 0)
+                ret += build_data_template_flowset(
+                    std::get<data_template_flowset>(rec));
+            else if (rec.index() == 1)
+                ret += build_data_flowset(std::get<data_flowset>(rec));
+            else if (rec.index() == 2)
+                ret += build_option_template(std::get<option_template>(rec));
         }
 
         return ret;
     }
 
-    Bytes buildDataTemplateFlowset(const DataTemplateFlowset &tf) const
+    bytes build_data_template_flowset(const data_template_flowset &tf) const
     {
-        Bytes templateBytes;
-        for (const DataTemplate &t : tf.templates)
-            templateBytes += buildDataTemplate(t);
+        bytes template_bytes;
+        for (const data_template &t : tf.templates)
+            template_bytes += build_data_template(t);
 
-        return toBytes(htons(tf.flowsetId)) +  // FlowsetID
-               toBytes(htons(
+        return to_bytes(htons(tf.flowset_id)) +  // flowset_id
+               to_bytes(htons(
                    sizeof(uint16_t) * 2 +
-                   templateBytes.size())) +  // Flowset length in
-                                             // bytes (including two 2-byte
-                                             // fields at beginning)
-               templateBytes;
+                   template_bytes.size())) +  // flowset length in
+                                              // bytes (including two 2-byte
+                                              // fields at beginning)
+               template_bytes;
     }
 
-    Bytes buildDataFlowset(const DataFlowset &df) const
+    bytes build_data_flowset(const data_flowset &df) const
     {
-        Bytes bytes;
-        for (const Bytes &value : df.values)
-            bytes += value;
+        bytes body;
+        for (const bytes &value : df.values)
+            body += value;
 
-        Bytes paddingBytes = padding(2 * sizeof(uint16_t) + bytes.size());
+        bytes padding_bytes = padding(2 * sizeof(uint16_t) + body.size());
 
-        return toBytes(htons(df.flowsetId)) +
-               toBytes(htons(sizeof(uint16_t) * 2 + bytes.size() +
-                             paddingBytes.size())) +
-               bytes + paddingBytes;
+        return to_bytes(htons(df.flowset_id)) +
+               to_bytes(htons(sizeof(uint16_t) * 2 + body.size() +
+                              padding_bytes.size())) +
+               body + padding_bytes;
     }
 
-    Bytes buildDataTemplate(const DataTemplate &t) const
+    bytes build_data_template(const data_template &t) const
     {
-        Bytes ret;
-        ret += toBytes(htons(t.templateId));
-        ret += toBytes(htons(t.fields.size()));
-        for (const auto &fieldDef : t.fields) {
-            ret += toBytes(htons(fieldDef.first));
-            ret += toBytes(htons(fieldDef.second));
+        bytes ret;
+        ret += to_bytes(htons(t.template_id));
+        ret += to_bytes(htons(t.fields.size()));
+        for (const auto &fd : t.fields) {
+            ret += to_bytes(htons(fd.first));
+            ret += to_bytes(htons(fd.second));
         }
 
         return ret;
     }
 
-    Bytes buildOptionTemplate(const OptionTemplate &t) const
+    bytes build_option_template(const option_template &t) const
     {
-        Bytes scope;
-        Bytes option;
+        bytes scope;
+        bytes option;
 
-        for (const FieldDef &fd : t.scopeFields) {
-            scope += toBytes(htons(fd.first));
-            scope += toBytes(htons(fd.second));
+        for (const field_def &fd : t.scope_fields) {
+            scope += to_bytes(htons(fd.first));
+            scope += to_bytes(htons(fd.second));
         }
-        for (const FieldDef &fd : t.fields) {
-            option += toBytes(htons(fd.first));
-            option += toBytes(htons(fd.second));
+        for (const field_def &fd : t.fields) {
+            option += to_bytes(htons(fd.first));
+            option += to_bytes(htons(fd.second));
         }
 
-        Bytes paddingBytes =
+        bytes padding_bytes =
             padding(5 * sizeof(uint16_t) + scope.size() + option.size());
 
-        return toBytes(htons(1))  // FlowsetID = 1 for all option templates
-               + toBytes(htons(5 * sizeof(uint16_t) + scope.size() +
-                               option.size() + paddingBytes.size())) +
-               toBytes(htons(t.templateId)) + toBytes(htons(scope.size())) +
-               toBytes(htons(option.size())) + scope + option + paddingBytes;
+        return to_bytes(htons(1))  // flowset_id = 1 for all option templates
+               + to_bytes(htons(5 * sizeof(uint16_t) + scope.size() +
+                                option.size() + padding_bytes.size())) +
+               to_bytes(htons(t.template_id)) + to_bytes(htons(scope.size())) +
+               to_bytes(htons(option.size())) + scope + option + padding_bytes;
     }
 
     // Convert any integer value to bytes.
     template <typename T>
-    static Bytes toBytes(T t)
+    static bytes to_bytes(T t)
     {
         union {
             T value;
             uint8_t bytes[sizeof(T)];
         } u;
         u.value = t;
-        return Bytes(u.bytes, u.bytes + sizeof(T));
+        return bytes(u.bytes, u.bytes + sizeof(T));
     }
 
-    static Bytes padding(size_t record_size)
+    static bytes padding(size_t record_size)
     {
         size_t padding = sizeof(uint32_t) - (record_size % sizeof(uint32_t));
-        return Bytes(padding, 0x0);
+        return bytes(padding, 0x0);
     }
 
-    DataTemplateFlowset &lastDataTemplateFlowset()
+    data_template_flowset &last_data_template_flowset()
     {
-        return std::get<DataTemplateFlowset>(records_.back());
+        return std::get<data_template_flowset>(records_.back());
     }
 
-    DataFlowset &lastDataFlowset()
+    data_flowset &last_data_flowset()
     {
-        return std::get<DataFlowset>(records_.back());
+        return std::get<data_flowset>(records_.back());
     }
 
-    OptionTemplate &lastOptionTemplate()
+    option_template &last_option_template()
     {
-        return std::get<OptionTemplate>(records_.back());
+        return std::get<option_template>(records_.back());
     }
 
     uint16_t version_ = 9;
     uint32_t uptime_ = 0;
     uint32_t timestamp_;
     uint32_t sequence_ = 0;
-    uint32_t sourceId_ = 0;
-    std::vector<Record> records_;
+    uint32_t source_id_ = 0;
+    std::vector<record> records_;
 };
 
 #endif

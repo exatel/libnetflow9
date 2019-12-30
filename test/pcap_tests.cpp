@@ -9,7 +9,7 @@
 #include <string>
 #include "test_lib.h"
 
-struct ParseResultDeleter
+struct parse_result_deleter
 {
     void operator()(nf9_parse_result *result)
     {
@@ -17,7 +17,7 @@ struct ParseResultDeleter
     }
 };
 
-struct StatsDeleter
+struct stats_deleter
 {
     void operator()(const nf9_stats *stats)
     {
@@ -25,10 +25,10 @@ struct StatsDeleter
     }
 };
 
-using ParseResult = std::unique_ptr<nf9_parse_result, ParseResultDeleter>;
-using Stats = std::unique_ptr<const nf9_stats, StatsDeleter>;
+using parse_result = std::unique_ptr<nf9_parse_result, parse_result_deleter>;
+using stats = std::unique_ptr<const nf9_stats, stats_deleter>;
 
-class PCAPTest : public ::testing::Test
+class pcap_test : public ::testing::Test
 {
 protected:
     void SetUp() override
@@ -41,10 +41,10 @@ protected:
         nf9_free(state_);
     }
 
-    std::vector<ParseResult> parse_pcap(std::string path)
+    std::vector<parse_result> parse_pcap(std::string path)
     {
         auto packets = get_packets(path.c_str());
-        std::vector<ParseResult> parsed;
+        std::vector<parse_result> parsed;
 
         for (const auto &packet : packets) {
             nf9_parse_result *result;
@@ -57,28 +57,27 @@ protected:
         return parsed;
     }
 
-    Stats get_stats()
+    stats get_stats()
     {
-        return Stats(nf9_get_stats(state_));
+        return stats(nf9_get_stats(state_));
     }
 
     nf9_state *state_;
 };
 
-TEST_F(PCAPTest, BasicTest)
+TEST_F(pcap_test, basic_test)
 {
-    std::vector<ParseResult> parsed_pcap = parse_pcap("testcases/1.pcap");
+    std::vector<parse_result> parsed_pcap = parse_pcap("testcases/1.pcap");
     nf9_addr addr = nf9_get_addr(parsed_pcap[6].get());
     EXPECT_EQ(addr.in.sin_addr.s_addr, inet_addr("172.17.0.5"));
     std::vector<uint32_t> src_ips;
-    for (const auto &parse_result : parsed_pcap) {
-        for (size_t flowset = 0;
-             flowset < nf9_get_num_flowsets(parse_result.get()); ++flowset) {
-            for (size_t flow = 0;
-                 flow < nf9_get_num_flows(parse_result.get(), flowset);
+    for (const auto &pr : parsed_pcap) {
+        for (size_t flowset = 0; flowset < nf9_get_num_flowsets(pr.get());
+             ++flowset) {
+            for (size_t flow = 0; flow < nf9_get_num_flows(pr.get(), flowset);
                  ++flow) {
-                nf9_value field = nf9_get_field(parse_result.get(), flowset,
-                                                flow, NF9_FIELD_IPV4_SRC_ADDR);
+                nf9_value field = nf9_get_field(pr.get(), flowset, flow,
+                                                NF9_FIELD_IPV4_SRC_ADDR);
                 src_ips.push_back(field.u32);
             }
         }
@@ -87,73 +86,66 @@ TEST_F(PCAPTest, BasicTest)
     EXPECT_EQ(src_ips.size(), 0);  // 2
 }
 
-TEST_F(PCAPTest, BasicStatsTest)
+TEST_F(pcap_test, basic_stats_test)
 {
-    std::vector<ParseResult> parse_result = parse_pcap("testcases/1.pcap");
-    Stats stats = get_stats();
+    std::vector<parse_result> pr = parse_pcap("testcases/1.pcap");
+    stats st = get_stats();
 
-    EXPECT_EQ(nf9_get_stat(stats.get(), NF9_STAT_TOTAL_RECORDS), 0 /* 4 */);
-    EXPECT_EQ(nf9_get_stat(stats.get(), NF9_STAT_TOTAL_TEMPLATES), 0 /* 4 */);
-    EXPECT_EQ(nf9_get_stat(stats.get(), NF9_STAT_TOTAL_OPTION_TEMPLATES),
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_TOTAL_RECORDS), 0 /* 4 */);
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_TOTAL_TEMPLATES), 0 /* 4 */);
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_TOTAL_OPTION_TEMPLATES),
               0 /* 2 */);
-    EXPECT_EQ(nf9_get_stat(stats.get(), NF9_STAT_MISSING_TEMPLATE_ERRORS), 0);
-    EXPECT_EQ(nf9_get_stat(stats.get(), NF9_STAT_MALFORMED_PACKETS), 0 /* 5 */);
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MISSING_TEMPLATE_ERRORS), 0);
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 0 /* 5 */);
 }
 
-TEST_F(PCAPTest, Malformed1Test)
+TEST_F(pcap_test, malformed_1_test)
 {
-    std::vector<ParseResult> parse_result =
-        parse_pcap("testcases/malformed_1.pcap");
-    Stats stats = get_stats();
+    std::vector<parse_result> pr = parse_pcap("testcases/malformed_1.pcap");
+    stats st = get_stats();
 
-    EXPECT_EQ(nf9_get_stat(stats.get(), NF9_STAT_MALFORMED_PACKETS), 0 /* 3 */);
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 0 /* 3 */);
 }
 
-TEST_F(PCAPTest, Malformed2Test)
+TEST_F(pcap_test, malformed_2_test)
 {
-    std::vector<ParseResult> parse_result =
-        parse_pcap("testcases/malformed_2.pcap");
-    Stats stats = get_stats();
+    std::vector<parse_result> pr = parse_pcap("testcases/malformed_2.pcap");
+    stats st = get_stats();
 
-    EXPECT_EQ(nf9_get_stat(stats.get(), NF9_STAT_MALFORMED_PACKETS),
-              0 /* 19 */);
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 0 /* 19 */);
 }
 
-TEST_F(PCAPTest, Malformed3Test)
+TEST_F(pcap_test, malformed_3_test)
 {
-    std::vector<ParseResult> parse_result =
-        parse_pcap("testcases/malformed_3.pcap");
-    Stats stats = get_stats();
+    std::vector<parse_result> pr = parse_pcap("testcases/malformed_3.pcap");
+    stats st = get_stats();
 
-    EXPECT_EQ(nf9_get_stat(stats.get(), NF9_STAT_MALFORMED_PACKETS),
-              0 /* 20 */);
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 0 /* 20 */);
 }
 
-TEST_F(PCAPTest, Malformed4Test)
+TEST_F(pcap_test, malformed_4_test)
 {
     /* The PCAP contains a Netflow packet where one flowset
      * has length that equals zero.
      */
-    std::vector<ParseResult> parse_result =
-        parse_pcap("testcases/malformed_4.pcap");
-    Stats stats = get_stats();
+    std::vector<parse_result> pr = parse_pcap("testcases/malformed_4.pcap");
+    stats st = get_stats();
 
-    EXPECT_EQ(nf9_get_stat(stats.get(), NF9_STAT_MALFORMED_PACKETS), 0 /* 1 */);
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 0 /* 1 */);
 }
 
-TEST_F(PCAPTest, Malformed5Test)
+TEST_F(pcap_test, malformed_5_test)
 {
     /* The PCAP contains a Netflow packet where one flowset has no
      * option fields and scope field with length equals zero.
      */
-    std::vector<ParseResult> parse_result =
-        parse_pcap("testcases/malformed_5.pcap");
-    Stats stats = get_stats();
+    std::vector<parse_result> pr = parse_pcap("testcases/malformed_5.pcap");
+    stats st = get_stats();
 
-    EXPECT_EQ(nf9_get_stat(stats.get(), NF9_STAT_MALFORMED_PACKETS), 0 /* 1 */);
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 0 /* 1 */);
 }
 
-TEST_F(PCAPTest, TemplateMatchingTest)
+TEST_F(pcap_test, template_matching_test)
 {
     // Netflow::UniqueStreamID test_id_1 = {256, 104, "2.1.3.8"};
     // Netflow::UniqueStreamID test_id_2 = {257, 104, "172.17.0.5"};
