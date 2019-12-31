@@ -11,7 +11,12 @@
 
 TEST_F(test, returns_same_ipv4_address)
 {
-    std::vector<uint8_t> packet = netflow_packet_builder().build();
+    std::vector<uint8_t> packet =
+        netflow_packet_builder()
+            .add_data_template_flowset(123)
+            .add_data_template(256)
+            .add_data_template_field(NF9_FIELD_IPV4_DST_ADDR, 4)
+            .build();
     nf9_addr addr = make_inet_addr("192.168.0.1");
     parse_result result = parse(packet.data(), packet.size(), &addr);
 
@@ -21,7 +26,12 @@ TEST_F(test, returns_same_ipv4_address)
 
 TEST_F(test, returns_same_ipv6_address)
 {
-    std::vector<uint8_t> packet = netflow_packet_builder().build();
+    std::vector<uint8_t> packet =
+        netflow_packet_builder()
+            .add_data_template_flowset(123)
+            .add_data_template(256)
+            .add_data_template_field(NF9_FIELD_IPV4_DST_ADDR, 4)
+            .build();
     nf9_addr addr = make_inet6_addr("1:0:0:0:0:0:0:8");
     parse_result result = parse(packet.data(), packet.size(), &addr);
 
