@@ -373,6 +373,9 @@ private:
 
     static bytes padding(size_t record_size)
     {
+        if (record_size % sizeof(uint32_t) == 0)
+            return bytes();
+
         size_t padding = sizeof(uint32_t) - (record_size % sizeof(uint32_t));
         return bytes(padding, 0x0);
     }
