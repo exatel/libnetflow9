@@ -34,6 +34,7 @@ TEST_F(pcap_test, basic_test)
     std::vector<parse_result> parsed_pcap = parse_pcap("testcases/1.pcap");
     nf9_addr addr = nf9_get_addr(parsed_pcap.at(0).get());
     EXPECT_EQ(addr.in.sin_addr.s_addr, inet_addr("172.17.0.5"));
+
     std::vector<uint32_t> src_ips;
     for (const auto &pr : parsed_pcap) {
         for (size_t flowset = 0; flowset < nf9_get_num_flowsets(pr.get());
@@ -47,7 +48,9 @@ TEST_F(pcap_test, basic_test)
         }
     }
 
-    EXPECT_EQ(src_ips.size(), 2);
+    ASSERT_EQ(src_ips.size(), 2);
+    ASSERT_STREQ(inet_ntoa(in_addr{src_ips[0]}), "172.17.0.5");
+    ASSERT_STREQ(inet_ntoa(in_addr{src_ips[1]}), "172.17.0.5");
 }
 
 TEST_F(pcap_test, basic_stats_test)
