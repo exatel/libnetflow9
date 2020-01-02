@@ -181,17 +181,17 @@ public:
     }
 
     // Begin a new option template with given id.
-    netflow_packet_builder &add_option_template(uint16_t template_id)
+    netflow_packet_builder &add_option_template_flowset(uint16_t template_id)
     {
         if (template_id <= 255)
             throw std::invalid_argument("template_id must be > 255");
 
-        records_.push_back(option_template{template_id, {}, {}});
+        records_.push_back(option_template_flowset{template_id, {}, {}});
         return *this;
     }
 
     // Add a scope field to the latest option template.  Fails if
-    // ``add_option_template`` was not yet called.
+    // ``add_option_template_flowset`` was not yet called.
     netflow_packet_builder &add_option_scope_field(uint16_t type,
                                                    uint16_t length)
     {
@@ -199,7 +199,7 @@ public:
             throw std::invalid_argument(
                 "scope field type must be > 0 and <= 5");
 
-        option_template &tmpl = last_option_template();
+        option_template_flowset &tmpl = last_option_template_flowset();
         tmpl.scope_fields.push_back({type, length});
         return *this;
     }
@@ -208,7 +208,7 @@ public:
     // ``add_data_template`` was not yet called.
     netflow_packet_builder &add_option_field(uint16_t type, uint16_t length)
     {
-        option_template &tmpl = last_option_template();
+        option_template_flowset &tmpl = last_option_template_flowset();
         tmpl.fields.push_back({type, length});
         return *this;
     }
@@ -233,7 +233,7 @@ private:
         std::vector<field_def> fields;
     };
 
-    struct option_template
+    struct option_template_flowset
     {
         uint16_t template_id;
         std::vector<field_def> scope_fields;
@@ -252,8 +252,8 @@ private:
         std::vector<bytes> values;
     };
 
-    using record =
-        std::variant<data_template_flowset, data_flowset, option_template>;
+    using record = std::variant<data_template_flowset, data_flowset,
+                                option_template_flowset>;
 
     bytes build_header() const
     {
@@ -278,7 +278,8 @@ private:
             else if (rec.index() == 1)
                 ret += build_data_flowset(std::get<data_flowset>(rec));
             else if (rec.index() == 2)
-                ret += build_option_template(std::get<option_template>(rec));
+                ret += build_option_template_flowset(
+                    std::get<option_template_flowset>(rec));
         }
 
         return ret;
@@ -326,7 +327,7 @@ private:
         return ret;
     }
 
-    bytes build_option_template(const option_template &t) const
+    bytes build_option_template_flowset(const option_template_flowset &t) const
     {
         bytes scope;
         bytes option;
@@ -381,9 +382,9 @@ private:
         return std::get<data_flowset>(records_.back());
     }
 
-    option_template &last_option_template()
+    option_template_flowset &last_option_template_flowset()
     {
-        return std::get<option_template>(records_.back());
+        return std::get<option_template_flowset>(records_.back());
     }
 
     uint16_t version_ = 9;
