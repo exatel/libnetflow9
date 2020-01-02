@@ -32,7 +32,7 @@ struct nf9_parse_result
     nf9_addr addr;
 };
 
-struct nf9_header
+struct netflow_header
 {
 private:
     uint16_t netflow_version_;
@@ -77,7 +77,7 @@ public:
 /**
  *  Record types as defined by the RFC.
  */
-enum class RecordType { TEMPLATE, OPTIONS, DATA };
+enum class netflow_record_type { TEMPLATE, OPTIONS, DATA };
 
 /**
  *  Not defined in the RFC, but it appears at the start of every record and
@@ -89,7 +89,7 @@ enum class RecordType { TEMPLATE, OPTIONS, DATA };
  *  receive buffer via pointers and references and as such can't be
  *  instantiated.
  */
-struct nf9_flowset_header
+struct flowset_header
 {
 private:
     uint16_t flowset_id_;
@@ -106,13 +106,13 @@ public:
         return ntohs(length_);
     }
 
-    RecordType record_type() const
+    netflow_record_type record_type() const
     {
         if (flowset_id() > 255)
-            return RecordType::DATA;
+            return netflow_record_type::DATA;
         else if (flowset_id() == 1)
-            return RecordType::OPTIONS;
-        return RecordType::TEMPLATE;
+            return netflow_record_type::OPTIONS;
+        return netflow_record_type::TEMPLATE;
     }
 };
 
@@ -123,15 +123,15 @@ public:
  *  receive buffer via pointers and references and as such can't be
  *  instantiated.
  */
-struct nf9_packet
+struct netflow_packet
 {
-    nf9_header header_;
+    netflow_header header_;
     const uint8_t *payload_;
 
     /**
      *  Returns a reference to the Netflow packet header.
      */
-    const nf9_header &header() const
+    const netflow_header &header() const
     {
         return header_;
     }
