@@ -8,9 +8,9 @@ enum class nf9_rc { RESULT_OK, RESULT_ERR };
 
 nf9_rc parse_nf_hdr(const uint8_t* buf, size_t len, struct nf9_packet* packet)
 {
-    if (len < sizeof(struct nf9_packet))
+    if (len < sizeof(struct nf9_header))
         return nf9_rc::RESULT_ERR;
-    memcpy(packet, buf, sizeof(struct nf9_packet));
+    memcpy(packet, buf, sizeof(struct nf9_header));
     packet->payload_ = buf + sizeof(nf9_header);
 
     return packet->header().is_well_formed() ? nf9_rc::RESULT_OK
@@ -27,7 +27,11 @@ nf9_rc parse_nf_flowset(nf9_state* state, const uint8_t* buf, size_t len,
            i < packet->header().record_count()) {
         struct nf9_flowset_header flowset_info = {};
         memcpy(&flowset_info, buf, sizeof(struct nf9_flowset_header));
-        if (flowset_info.length() <= 4)
+
+        // The length must be at least 4 because each flowset has at
+        // least two uint16_t fields: flowset_id and the length field
+        // itself.
+        if (flowset_info.length() < 4)
             return nf9_rc::RESULT_ERR;
 
         switch (flowset_info.record_type()) {

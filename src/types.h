@@ -108,11 +108,11 @@ public:
 
     RecordType record_type() const
     {
-        if (flowset_id() == 0)
-            return RecordType::TEMPLATE;
+        if (flowset_id() > 255)
+            return RecordType::DATA;
         else if (flowset_id() == 1)
             return RecordType::OPTIONS;
-        return RecordType::DATA;
+        return RecordType::TEMPLATE;
     }
 };
 
