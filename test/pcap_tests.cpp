@@ -75,7 +75,8 @@ TEST_F(pcap_test, malformed_2_test)
     std::vector<parse_result> pr = parse_pcap("testcases/malformed_2.pcap");
     stats st = get_stats();
 
-    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 0 /* 19 */);
+    // FIXME: These don't look malformed.
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 16 /* 19 */);
 }
 
 TEST_F(pcap_test, malformed_3_test)
@@ -105,7 +106,9 @@ TEST_F(pcap_test, malformed_5_test)
     std::vector<parse_result> pr = parse_pcap("testcases/malformed_5.pcap");
     stats st = get_stats();
 
-    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 0 /* 1 */);
+    // FIXME: Actually, it's not malformed.  A data record is missing a template
+    // in this test.
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 1);
 }
 
 TEST_F(pcap_test, template_matching_test)

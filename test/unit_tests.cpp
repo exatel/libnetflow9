@@ -43,6 +43,7 @@ TEST_F(test, detects_missing_templates)
     ASSERT_NE(result, nullptr);
 
     stats st = get_stats();
+    ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
     ASSERT_EQ(nf9_get_stat(st.get(), NF9_STAT_MISSING_TEMPLATE_ERRORS),
               0 /* 1 */);
 }
@@ -58,6 +59,7 @@ TEST_F(test, recognizes_template_flowsets)
     parse_result result = parse(packet.data(), packet.size(), &addr);
 
     ASSERT_NE(result, nullptr);
+    ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
     ASSERT_EQ(nf9_get_flowset_type(result.get(), 0), NF9_FLOWSET_TEMPLATE);
 }
 
@@ -70,6 +72,7 @@ TEST_F(test, recognizes_data_flowsets)
     parse_result result = parse(packet.data(), packet.size(), &addr);
     ASSERT_NE(result, nullptr);
 
+    ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
     ASSERT_EQ(nf9_get_flowset_type(result.get(), 0), NF9_FLOWSET_DATA);
 }
 
@@ -82,5 +85,6 @@ TEST_F(test, recognizes_option_flowsets)
     parse_result result = parse(packet.data(), packet.size(), &addr);
     ASSERT_NE(result, nullptr);
 
+    ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
     ASSERT_EQ(nf9_get_flowset_type(result.get(), 0), NF9_FLOWSET_OPTIONS);
 }

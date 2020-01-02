@@ -3,6 +3,7 @@
 
 #include <netflow9.h>
 #include <netinet/in.h>
+#include <unordered_map>
 #include <vector>
 
 struct nf9_stats
@@ -15,10 +16,17 @@ struct nf9_stats
     int missing_template_errors = 0;
 };
 
+using template_field = std::pair<int, int>;
+using data_template = std::vector<template_field>;
+
 struct nf9_state
 {
     int flags;
     nf9_stats stats;
+
+    /* FIXME: The map key should recognize the exporter device
+     * (nf9_addr.) */
+    std::unordered_map<int, data_template> templates;
 };
 
 struct flowset
