@@ -282,7 +282,7 @@ union nf9_value {
     struct
     {
         size_t length;
-        void* bytes;
+        const void* bytes;
     } data;
 };
 

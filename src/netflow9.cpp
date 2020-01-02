@@ -23,7 +23,7 @@ int nf9_parse(nf9_state* state, nf9_parse_result** result, const uint8_t* buf,
     *result = new nf9_parse_result;
     (*result)->addr = *addr;
 
-    if (!parse(state, buf, len, *result)) {
+    if (!parse(buf, len, state, *result)) {
         state->stats.malformed_packets++;
         return 1;
     }
@@ -43,15 +43,30 @@ int nf9_get_flowset_type(const nf9_parse_result* pr, int flowset)
 
 size_t nf9_get_num_flows(const nf9_parse_result* pr, int flowset)
 {
-    return 0;
+    return pr->flowsets[flowset].flows.size();
 }
 
-nf9_value nf9_get_field(const nf9_parse_result* pr, int flowset, int flow,
+nf9_value nf9_get_field(const nf9_parse_result* pr, int flowset, int flownum,
                         int field)
 {
-    nf9_value v;
-    v.u32 = 0;
-    return v;
+    const std::vector<uint8_t>& value =
+        pr->flowsets[flowset].flows[flownum].at(field);
+
+    nf9_value ret;
+    switch (value.size()) {
+        case sizeof(uint32_t):
+            ret.u32 = *reinterpret_cast<const uint32_t*>(value.data());
+            break;
+        case sizeof(uint64_t):
+            ret.u64 = *reinterpret_cast<const uint64_t*>(value.data());
+            break;
+        default:
+            ret.data = {};
+            ret.data.bytes = value.data();
+            ret.data.length = value.size();
+            break;
+    }
+    return ret;
 }
 
 void nf9_free_parse_result(nf9_parse_result* pr)

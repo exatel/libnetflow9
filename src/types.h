@@ -17,7 +17,13 @@ struct nf9_stats
 };
 
 using template_field = std::pair<int, int>;
-using data_template = std::vector<template_field>;
+using flow = std::unordered_map<int, std::vector<uint8_t>>;
+
+struct data_template
+{
+    std::vector<template_field> fields;
+    size_t total_length;
+};
 
 struct nf9_state
 {
@@ -32,6 +38,13 @@ struct nf9_state
 struct flowset
 {
     nf9_flowset_type type;
+
+    /* Empty if this is not a data template flowset. */
+    data_template dtemplate;
+
+    /* This contains flows in data records.  Empty if this is not a data record
+     * flowset. */
+    std::vector<flow> flows;
 };
 
 struct nf9_parse_result
@@ -48,12 +61,6 @@ struct netflow_header
     uint32_t timestamp;
     uint32_t sequence;
     uint32_t source_id;
-};
-
-struct flowset_header
-{
-    uint16_t flowset_id;
-    uint16_t length;
 };
 
 #endif

@@ -4,7 +4,7 @@
 #include <netflow9.h>
 #include "types.h"
 
-bool parse(nf9_state* state, const uint8_t* buf, size_t len,
+bool parse(const uint8_t* buf, size_t len, nf9_state* state,
            nf9_parse_result* result);
 
 #endif

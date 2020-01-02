@@ -88,3 +88,39 @@ TEST_F(test, recognizes_option_flowsets)
     ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
     ASSERT_EQ(nf9_get_flowset_type(result.get(), 0), NF9_FLOWSET_OPTIONS);
 }
+
+TEST_F(test, parsing_data_flowset_from_template)
+{
+    nf9_addr addr = make_inet_addr("192.168.0.123");
+    std::vector<uint8_t> packet;
+    parse_result result;
+
+    // First, feed data template to the parser
+    packet = netflow_packet_builder()
+                 .add_data_template_flowset(0)
+                 .add_data_template(256)
+                 .add_data_template_field(NF9_FIELD_IPV4_SRC_ADDR, 4)
+                 .add_data_template_field(NF9_FIELD_IPV4_DST_ADDR, 4)
+                 .build();
+    result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_NE(result, nullptr);
+    ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
+    ASSERT_EQ(nf9_get_flowset_type(result.get(), 0), NF9_FLOWSET_TEMPLATE);
+
+    // Now, attempt to parse data flowset in previous template format.
+    packet = netflow_packet_builder()
+                 .add_data_flowset(256)
+                 .add_data_field(uint32_t(875770417))  // SRC = 1.2.3.4
+                 .add_data_field(uint32_t(943142453))  // DST = 5.6.7.8
+                 .build();
+    result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_NE(result, nullptr);
+    ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
+    ASSERT_EQ(nf9_get_num_flows(result.get(), 0), 1);
+    ASSERT_EQ(nf9_get_flowset_type(result.get(), 0), NF9_FLOWSET_DATA);
+
+    nf9_value src = nf9_get_field(result.get(), 0, 0, NF9_FIELD_IPV4_SRC_ADDR);
+    nf9_value dst = nf9_get_field(result.get(), 0, 0, NF9_FIELD_IPV4_DST_ADDR);
+    ASSERT_EQ(src.u32, 875770417);
+    ASSERT_EQ(dst.u32, 943142453);
+}
