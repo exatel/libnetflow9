@@ -67,6 +67,8 @@ TEST_F(pcap_test, basic_stats_test)
 
 TEST_F(pcap_test, malformed_1_test)
 {
+    // FIXME: Why is this PCAP malformed?  It looks correct, except for the fact
+    // that template definitions are missing.
     std::vector<parse_result> pr = parse_pcap("testcases/malformed_1.pcap");
     stats st = get_stats();
 
@@ -78,12 +80,16 @@ TEST_F(pcap_test, malformed_2_test)
     std::vector<parse_result> pr = parse_pcap("testcases/malformed_2.pcap");
     stats st = get_stats();
 
-    // FIXME: These don't look malformed.
-    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 16 /* 19 */);
+    // This PCAP has 16 packets.  In each packet, there is a flowset that has
+    // length equal to 1, which is invalid.  The minimum length of a flowset is
+    // 4 bytes.
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 16);
 }
 
 TEST_F(pcap_test, malformed_3_test)
 {
+    // FIXME: Why is this PCAP malformed?  It looks correct, except for the fact
+    // that template definitions are missing.
     std::vector<parse_result> pr = parse_pcap("testcases/malformed_3.pcap");
     stats st = get_stats();
 
@@ -112,16 +118,4 @@ TEST_F(pcap_test, malformed_5_test)
     // FIXME: Actually, it's not malformed.  A data record is missing a template
     // in this test.
     EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 1);
-}
-
-TEST_F(pcap_test, template_matching_test)
-{
-    // Netflow::UniqueStreamID test_id_1 = {256, 104, "2.1.3.8"};
-    // Netflow::UniqueStreamID test_id_2 = {257, 104, "172.17.0.5"};
-    // Netflow::UniqueStreamID test_id_3 = {258, 104, "172.17.0.5"};
-
-    // EXPECT_EQ(processor.template_library().count(), 4);
-    // EXPECT_EQ(processor.template_library().exists(test_id_1), false);
-    // EXPECT_EQ(processor.template_library().exists(test_id_2), true);
-    // EXPECT_EQ(processor.template_library().exists(test_id_3), true);
 }
