@@ -124,3 +124,31 @@ TEST_F(test, parsing_data_flowset_from_template)
     ASSERT_EQ(src.u32, 875770417);
     ASSERT_EQ(dst.u32, 943142453);
 }
+
+TEST_F(test, data_record_underflow)
+{
+    nf9_addr addr = make_inet_addr("192.168.0.123");
+    std::vector<uint8_t> packet;
+    parse_result result;
+
+    // Feed some template to the parser.
+    packet = netflow_packet_builder()
+                 .add_data_template_flowset(0)
+                 .add_data_template(256)
+                 .add_data_template_field(NF9_FIELD_IPV4_SRC_ADDR, 4)
+                 .add_data_template_field(NF9_FIELD_IPV4_DST_ADDR, 4)
+                 .build();
+    result = parse(packet.data(), packet.size(), &addr);
+
+    // Attempt to parse some data record. Notice: there's only one field here,
+    // but the template defines two.
+    packet = netflow_packet_builder()
+                 .add_data_flowset(256)
+                 .add_data_field(0)
+                 .build();
+    result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_NE(result, nullptr);
+
+    // The packet shouldn't be treated as a valid flow.
+    ASSERT_EQ(nf9_get_num_flows(result.get(), 0), 0);
+}
