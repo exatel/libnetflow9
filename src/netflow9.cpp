@@ -23,8 +23,7 @@ int nf9_parse(nf9_state* state, nf9_parse_result** result, const uint8_t* buf,
     *result = new nf9_parse_result;
     (*result)->addr = *addr;
 
-    auto result_ = parse(state, buf, len, *result);
-    if (result_ != nf9_rc::RESULT_OK) {
+    if (!parse(state, buf, len, *result)) {
         state->stats.malformed_packets++;
         return 1;
     }

@@ -12,20 +12,20 @@ static nf9_flowset_type get_flowset_type(const flowset_header* header)
     return NF9_FLOWSET_TEMPLATE;
 }
 
-static nf9_rc parse_header(netflow_header* hdr, const uint8_t* buf, size_t len)
+static bool parse_header(netflow_header* hdr, const uint8_t* buf, size_t len)
 {
     if (len < sizeof(netflow_header))
-        return nf9_rc::RESULT_ERR;
+        return false;
     memcpy(hdr, buf, sizeof(netflow_header));
 
     if (ntohs(hdr->version) != 9)
-        return nf9_rc::RESULT_ERR;
+        return false;
 
-    return nf9_rc::RESULT_OK;
+    return true;
 }
 
-static nf9_rc parse_flowsets(size_t count, nf9_state* state, const uint8_t* buf,
-                             size_t len, nf9_parse_result* result)
+static bool parse_flowsets(size_t count, nf9_state* state, const uint8_t* buf,
+                           size_t len, nf9_parse_result* result)
 {
     const uint8_t* end = buf + len;
     buf += sizeof(netflow_header);
@@ -40,7 +40,7 @@ static nf9_rc parse_flowsets(size_t count, nf9_state* state, const uint8_t* buf,
         // least two uint16_t fields: flowset_id and the length field
         // itself.
         if (flowset_length < 4)
-            return nf9_rc::RESULT_ERR;
+            return false;
 
         switch (get_flowset_type(&flowset_info)) {
             case NF9_FLOWSET_TEMPLATE:
@@ -63,22 +63,21 @@ static nf9_rc parse_flowsets(size_t count, nf9_state* state, const uint8_t* buf,
         ++i;
     }
     if (buf > end)
-        return nf9_rc::RESULT_ERR;
-    return nf9_rc::RESULT_OK;
+        return false;
+    return true;
 }
 
-nf9_rc parse(nf9_state* state, const uint8_t* buf, size_t len,
-             nf9_parse_result* result)
+bool parse(nf9_state* state, const uint8_t* buf, size_t len,
+           nf9_parse_result* result)
 {
     netflow_header hdr;
 
-    if (parse_header(&hdr, buf, len) != nf9_rc::RESULT_OK)
-        return nf9_rc::RESULT_ERR;
+    if (!parse_header(&hdr, buf, len))
+        return false;
 
     size_t num_flowsets = ntohs(hdr.count);
-    if (parse_flowsets(num_flowsets, state, buf, len, result) !=
-        nf9_rc::RESULT_OK)
-        return nf9_rc::RESULT_ERR;
+    if (!parse_flowsets(num_flowsets, state, buf, len, result))
+        return false;
 
-    return nf9_rc::RESULT_OK;
+    return true;
 }
