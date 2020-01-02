@@ -1,45 +1,57 @@
 #include <cstring>
 #include "parse.h"
 
-static nf9_rc parse_header(const uint8_t* buf, size_t len,
-                           netflow_packet* packet)
+static nf9_flowset_type get_flowset_type(const flowset_header* header)
+{
+    uint16_t id = ntohs(header->flowset_id);
+
+    if (id > 255)
+        return NF9_FLOWSET_DATA;
+    else if (id == 1)
+        return NF9_FLOWSET_OPTIONS;
+    return NF9_FLOWSET_TEMPLATE;
+}
+
+static nf9_rc parse_header(netflow_header* hdr, const uint8_t* buf, size_t len)
 {
     if (len < sizeof(netflow_header))
         return nf9_rc::RESULT_ERR;
-    memcpy(packet, buf, sizeof(netflow_header));
-    packet->payload_ = buf + sizeof(netflow_header);
+    memcpy(hdr, buf, sizeof(netflow_header));
 
-    return packet->header().is_well_formed() ? nf9_rc::RESULT_OK
-                                             : nf9_rc::RESULT_ERR;
+    if (ntohs(hdr->version) != 9)
+        return nf9_rc::RESULT_ERR;
+
+    return nf9_rc::RESULT_OK;
 }
 
-static nf9_rc parse_flowsets(nf9_state* state, const uint8_t* buf, size_t len,
-                             netflow_packet* packet, nf9_parse_result* result)
+static nf9_rc parse_flowsets(size_t count, nf9_state* state, const uint8_t* buf,
+                             size_t len, nf9_parse_result* result)
 {
     const uint8_t* end = buf + len;
     buf += sizeof(netflow_header);
     uint16_t i = 0;
-    while (buf <= end - sizeof(flowset_header) &&
-           i < packet->header().record_count()) {
+    while (buf <= end - sizeof(flowset_header) && i < count) {
         struct flowset_header flowset_info = {};
         memcpy(&flowset_info, buf, sizeof(flowset_header));
+
+        size_t flowset_length = ntohs(flowset_info.length);
 
         // The length must be at least 4 because each flowset has at
         // least two uint16_t fields: flowset_id and the length field
         // itself.
-        if (flowset_info.length() < 4)
+        if (flowset_length < 4)
             return nf9_rc::RESULT_ERR;
 
-        switch (flowset_info.record_type()) {
-            case netflow_record_type::TEMPLATE:
+        switch (get_flowset_type(&flowset_info)) {
+            case NF9_FLOWSET_TEMPLATE:
                 state->stats.templates++;
                 result->flowsets.push_back(flowset{NF9_FLOWSET_TEMPLATE});
                 break;
-            case netflow_record_type::OPTIONS:
+            case NF9_FLOWSET_OPTIONS:
                 state->stats.option_templates++;
                 result->flowsets.push_back(flowset{NF9_FLOWSET_OPTIONS});
                 break;
-            case netflow_record_type::DATA:
+            case NF9_FLOWSET_DATA:
                 state->stats.records++;
                 result->flowsets.push_back(flowset{NF9_FLOWSET_DATA});
                 break;
@@ -47,7 +59,7 @@ static nf9_rc parse_flowsets(nf9_state* state, const uint8_t* buf, size_t len,
                 break;
         }
 
-        buf += flowset_info.length();
+        buf += flowset_length;
         ++i;
     }
     if (buf > end)
@@ -58,12 +70,14 @@ static nf9_rc parse_flowsets(nf9_state* state, const uint8_t* buf, size_t len,
 nf9_rc parse(nf9_state* state, const uint8_t* buf, size_t len,
              nf9_parse_result* result)
 {
-    netflow_packet packet = {};
+    netflow_header hdr;
 
-    if (nf9_rc::RESULT_OK != parse_header(buf, len, &packet))
+    if (parse_header(&hdr, buf, len) != nf9_rc::RESULT_OK)
         return nf9_rc::RESULT_ERR;
 
-    if (nf9_rc::RESULT_OK != parse_flowsets(state, buf, len, &packet, result))
+    size_t num_flowsets = ntohs(hdr.count);
+    if (parse_flowsets(num_flowsets, state, buf, len, result) !=
+        nf9_rc::RESULT_OK)
         return nf9_rc::RESULT_ERR;
 
     return nf9_rc::RESULT_OK;

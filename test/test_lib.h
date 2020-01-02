@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <string>
 #include <variant>
+#include "types.h"
 
 struct pcap_packet
 {
@@ -76,16 +77,6 @@ protected:
     }
 
     nf9_state *state_;
-};
-
-struct netflow_header
-{
-    uint16_t version;
-    uint16_t count;
-    uint32_t uptime;
-    uint32_t timestamp;
-    uint32_t sequence;
-    uint32_t source_id;
 };
 
 // Objects of this class can build Netflow9 packets for unit tests.
