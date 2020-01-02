@@ -25,6 +25,8 @@ int nf9_parse(nf9_state* state, nf9_parse_result** result, const uint8_t* buf,
 
     if (!parse(buf, len, state, *result)) {
         state->stats.malformed_packets++;
+        nf9_free_parse_result(*result);
+        *result = nullptr;
         return 1;
     }
 
