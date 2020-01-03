@@ -191,28 +191,25 @@ static bool parse_flowset(buffer& buf, nf9_parse_result* result,
     buf.advance(flowset_length);
 
     switch (get_flowset_type(&header)) {
-        case NF9_FLOWSET_TEMPLATE: {
+        case NF9_FLOWSET_TEMPLATE:
             state->stats.templates++;
-            if (!parse_data_template_flowset(tmpbuf, state, result))
-                return false;
-            break;
-        }
+            return parse_data_template_flowset(tmpbuf, state, result);
+
         case NF9_FLOWSET_OPTIONS:
             state->stats.option_templates++;
             result->flowsets.push_back(flowset{NF9_FLOWSET_OPTIONS});
-            break;
+            return true;
         case NF9_FLOWSET_DATA:
             state->stats.records++;
-            if (!parse_data_flowset(tmpbuf, state, ntohs(header.flowset_id),
-                                    result))
-                return false;
-            break;
+            return parse_data_flowset(tmpbuf, state, ntohs(header.flowset_id),
+                                      result);
         default:
             state->stats.malformed_packets++;
             return false;
     }
 
-    return true;
+    // Unreachable
+    assert(0);
 }
 
 bool parse(const uint8_t* data, size_t len, nf9_state* state,
