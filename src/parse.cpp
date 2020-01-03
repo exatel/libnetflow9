@@ -20,12 +20,12 @@ static nf9_flowset_type get_flowset_type(const flowset_header* header)
 
 static bool parse_header(const uint8_t** buf, size_t* len, netflow_header* hdr)
 {
-    if (*len < sizeof(netflow_header))
+    if (*len < sizeof(*hdr))
         return false;
-    memcpy(hdr, *buf, sizeof(netflow_header));
+    memcpy(hdr, *buf, sizeof(*hdr));
 
-    *buf += sizeof(netflow_header);
-    *len -= sizeof(netflow_header);
+    *buf += sizeof(*hdr);
+    *len -= sizeof(*hdr);
 
     if (ntohs(hdr->version) != 9)
         return false;
@@ -42,10 +42,10 @@ static bool parse_data_template(const uint8_t** buf, size_t* len,
     uint16_t type;
     uint16_t length;
 
-    memcpy(&type, *buf, sizeof(uint16_t));
-    *buf += sizeof(uint16_t);
-    memcpy(&length, *buf, sizeof(uint16_t));
-    *buf += sizeof(uint16_t);
+    memcpy(&type, *buf, sizeof(type));
+    *buf += sizeof(type);
+    memcpy(&length, *buf, sizeof(length));
+    *buf += sizeof(length);
     *len -= 2 * sizeof(uint16_t);
 
     type = ntohs(type);
@@ -67,10 +67,10 @@ static bool parse_data_template_flowset(const uint8_t* buf, size_t len,
     uint16_t template_id;
     uint16_t field_count;
 
-    memcpy(&template_id, buf, sizeof(uint16_t));
-    buf += sizeof(uint16_t);
-    memcpy(&field_count, buf, sizeof(uint16_t));
-    buf += sizeof(uint16_t);
+    memcpy(&template_id, buf, sizeof(template_id));
+    buf += sizeof(template_id);
+    memcpy(&field_count, buf, sizeof(field_count));
+    buf += sizeof(field_count);
     len -= 2 * sizeof(uint16_t);
 
     template_id = ntohs(template_id);
@@ -154,24 +154,25 @@ static bool parse_data_flowset(const uint8_t* buf, size_t len, nf9_state* state,
 static bool parse_flowset(const uint8_t** buf, size_t* len,
                           nf9_parse_result* result, nf9_state* state)
 {
-    if (*len < sizeof(flowset_header))
+    flowset_header header;
+
+    if (*len < sizeof(header))
         return false;
 
-    flowset_header header;
-    memcpy(&header, *buf, sizeof(flowset_header));
+    memcpy(&header, *buf, sizeof(header));
 
-    *buf += sizeof(flowset_header);
-    *len -= sizeof(flowset_header);
+    *buf += sizeof(header);
+    *len -= sizeof(header);
 
     size_t flowset_length = ntohs(header.length);
 
     // The length must be at least 4 because each flowset has at
     // least two uint16_t fields: flowset_id and the length field
     // itself.
-    if (flowset_length < 2 * sizeof(uint16_t))
+    if (flowset_length < sizeof(header))
         return false;
 
-    flowset_length -= 2 * sizeof(uint16_t);
+    flowset_length -= sizeof(header);
     if (flowset_length > *len)
         return false;
 
