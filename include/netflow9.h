@@ -7,6 +7,12 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
+#ifdef NF9_BUILD
+#define NF9_API __attribute__((__visibility__("default")))
+#else
+#define NF9_API
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -16,8 +22,8 @@ enum nf9_state_flags {
 };
 typedef struct nf9_state nf9_state;
 
-nf9_state* nf9_init(int flags);
-void nf9_free(nf9_state* state);
+NF9_API nf9_state* nf9_init(int flags);
+NF9_API void nf9_free(nf9_state* state);
 
 typedef struct nf9_parse_result nf9_parse_result;
 
@@ -27,10 +33,10 @@ typedef union nf9_addr {
     struct sockaddr_in6 in6;
 } nf9_addr;
 
-int nf9_parse(nf9_state* state, nf9_parse_result** result, const uint8_t* buf,
-              size_t len, const nf9_addr* addr);
+NF9_API int nf9_parse(nf9_state* state, nf9_parse_result** result,
+                      const uint8_t* buf, size_t len, const nf9_addr* addr);
 
-void nf9_free_parse_result(nf9_parse_result* result);
+NF9_API void nf9_free_parse_result(nf9_parse_result* result);
 
 enum nf9_field {
     NF9_FIELD_F0,
@@ -286,7 +292,7 @@ union nf9_value {
     } data;
 };
 
-size_t nf9_get_num_flowsets(const nf9_parse_result* pr);
+NF9_API size_t nf9_get_num_flowsets(const nf9_parse_result* pr);
 
 enum nf9_flowset_type {
     NF9_FLOWSET_TEMPLATE,
@@ -294,13 +300,13 @@ enum nf9_flowset_type {
     NF9_FLOWSET_DATA,
 };
 
-int nf9_get_flowset_type(const nf9_parse_result* pr, int flowset);
+NF9_API int nf9_get_flowset_type(const nf9_parse_result* pr, int flowset);
 
-size_t nf9_get_num_flows(const nf9_parse_result* pr, int flowset);
-nf9_value nf9_get_field(const nf9_parse_result* pr, int flowset, int flow,
-                        int field);
+NF9_API size_t nf9_get_num_flows(const nf9_parse_result* pr, int flowset);
+NF9_API nf9_value nf9_get_field(const nf9_parse_result* pr, int flowset,
+                                int flow, int field);
 
-nf9_addr nf9_get_addr(const nf9_parse_result* pr);
+NF9_API nf9_addr nf9_get_addr(const nf9_parse_result* pr);
 
 enum nf9_stat_fields {
     NF9_STAT_PROCESSED_PACKETS,
@@ -312,9 +318,9 @@ enum nf9_stat_fields {
 };
 
 typedef struct nf9_stats nf9_stats;
-const nf9_stats* nf9_get_stats(const nf9_state* state);
-int nf9_get_stat(const nf9_stats* stats, int stat);
-void nf9_free_stats(const nf9_stats*);
+NF9_API const nf9_stats* nf9_get_stats(const nf9_state* state);
+NF9_API int nf9_get_stat(const nf9_stats* stats, int stat);
+NF9_API void nf9_free_stats(const nf9_stats*);
 
 #ifdef __cplusplus
 }

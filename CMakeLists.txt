@@ -14,7 +14,10 @@ file(GLOB CXX_HEADERS include/*/*)
 file(COPY testcases DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 add_library(netflow9 SHARED ${CXX_SRC})
-set_target_properties(netflow9 PROPERTIES PUBLIC_HEADER "${CXX_HEADERS}")
+set_target_properties(netflow9 PROPERTIES
+  PUBLIC_HEADER "${CXX_HEADERS}"
+  DEFINE_SYMBOL "NF9_BUILD")
+target_compile_options(netflow9 PRIVATE -fvisibility=hidden)
 install(TARGETS netflow9
         LIBRARY DESTINATION lib
         PUBLIC_HEADER DESTINATION include/netflow9)
