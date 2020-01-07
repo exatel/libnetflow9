@@ -76,6 +76,9 @@ static bool parse_data_template(buffer& buf, data_template& result)
     type = ntohs(type);
     length = ntohs(length);
 
+    if (length == 0)
+        return false;
+
     result.fields.emplace_back(type, length);
     result.total_length += length;
 
@@ -107,6 +110,9 @@ static bool parse_data_template_flowset(buffer& buf, nf9_state& state,
             if (!parse_data_template(buf, tmpl))
                 return false;
         }
+
+        if (tmpl.total_length == 0)
+            return false;
 
         exporter_stream_id stream_id = {addr, source_id, template_id};
         state.templates[stream_id] = tmpl;

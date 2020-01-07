@@ -70,12 +70,11 @@ TEST_F(pcap_test, basic_stats_test)
 
 TEST_F(pcap_test, malformed_1_test)
 {
-    // FIXME: Why is this PCAP malformed?  It looks correct, except for the fact
-    // that template definitions are missing.
     std::vector<parse_result> pr = parse_pcap("testcases/malformed_1.pcap");
     stats st = get_stats();
 
-    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 0 /* 3 */);
+    // This PCAP is malformed: it has empty data templates.
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 3);
 }
 
 TEST_F(pcap_test, malformed_2_test)

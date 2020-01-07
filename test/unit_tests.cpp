@@ -23,27 +23,6 @@ TEST_F(test, templates_exceptions)
         std::runtime_error);
 }
 
-TEST_F(test, add_flowsets)
-{
-    const int flowset_id = 100, template_id = 400;
-    std::vector<uint8_t> packet = netflow_packet_builder()
-                                      .add_data_template_flowset(flowset_id)
-                                      .add_data_template(template_id)
-                                      .add_data_template_flowset(flowset_id + 1)
-                                      .add_data_template(template_id + 1)
-                                      .add_data_template_flowset(flowset_id + 2)
-                                      .add_data_template(template_id + 2)
-                                      .add_data_template_flowset(flowset_id + 3)
-                                      .add_data_template(template_id + 3)
-                                      .build();
-    nf9_addr addr = make_inet_addr("192.192.192.192");
-    parse_result result = parse(packet.data(), packet.size(), &addr);
-    ASSERT_NE(result, nullptr);
-
-    const int flowsets_num = nf9_get_num_flowsets(result.get());
-    ASSERT_EQ(4, flowsets_num);
-}
-
 TEST_F(test, add_option_template_data)
 {
     const int template_id = 1000;
@@ -102,6 +81,74 @@ TEST_F(test, returns_same_ipv6_address)
     ASSERT_EQ(address_to_string(returned_addr), address_to_string(addr));
 }
 
+TEST_F(test, packet_too_short)
+{
+    nf9_addr addr = make_inet_addr("192.168.0.1");
+    std::vector<uint8_t> packet = netflow_packet_builder().build();
+
+    parse_result result = parse(packet.data(), packet.size() - 1, &addr);
+    ASSERT_EQ(result, nullptr);
+}
+
+TEST_F(test, invalid_netflow_version)
+{
+    nf9_addr addr = make_inet_addr("192.168.0.1");
+    netflow_header hdr{};
+    hdr.version = htons(5);  // Invalid version.  We only support version 9.
+
+    std::vector<uint8_t> packet(sizeof(hdr));
+    memcpy(packet.data(), &hdr, sizeof(hdr));
+
+    parse_result result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_EQ(result, nullptr);
+}
+
+TEST_F(test, flowset_too_short)
+{
+    nf9_addr addr = make_inet_addr("192.168.0.1");
+    std::vector<uint8_t> packet = netflow_packet_builder().build();
+
+    uint16_t& count = *reinterpret_cast<uint16_t*>(packet.data() + 2);
+    count = ntohs(30);
+
+    packet.resize(packet.size() + 3);
+
+    parse_result result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_EQ(result, nullptr);
+}
+
+TEST_F(test, flowset_length_too_small)
+{
+    nf9_addr addr = make_inet_addr("192.168.0.1");
+    std::vector<uint8_t> packet = netflow_packet_builder()
+                                      .add_data_flowset(267)
+                                      .add_data_field(uint32_t(12345))
+                                      .build();
+
+    uint16_t& first_flowset_length = *reinterpret_cast<uint16_t*>(
+        packet.data() + sizeof(netflow_header) + sizeof(uint16_t));
+    first_flowset_length = htons(2);
+
+    parse_result result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_EQ(result, nullptr);
+}
+
+TEST_F(test, flowset_length_too_big)
+{
+    nf9_addr addr = make_inet_addr("192.168.0.1");
+    std::vector<uint8_t> packet = netflow_packet_builder()
+                                      .add_data_flowset(267)
+                                      .add_data_field(uint32_t(12345))
+                                      .build();
+
+    uint16_t& first_flowset_length = *reinterpret_cast<uint16_t*>(
+        packet.data() + sizeof(netflow_header) + sizeof(uint16_t));
+    first_flowset_length = htons(128);
+
+    parse_result result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_EQ(result, nullptr);
+}
+
 TEST_F(test, detects_missing_templates)
 {
     std::vector<uint8_t> packet = netflow_packet_builder()
@@ -120,10 +167,12 @@ TEST_F(test, detects_missing_templates)
 
 TEST_F(test, recognizes_template_flowsets)
 {
-    std::vector<uint8_t> packet = netflow_packet_builder()
-                                      .add_data_template_flowset(200)
-                                      .add_data_template(400)
-                                      .build();
+    std::vector<uint8_t> packet =
+        netflow_packet_builder()
+            .add_data_template_flowset(200)
+            .add_data_template(400)
+            .add_data_template_field(NF9_FIELD_IPV4_DST_ADDR, 4)
+            .build();
 
     nf9_addr addr = make_inet_addr("192.168.0.123");
     parse_result result = parse(packet.data(), packet.size(), &addr);
@@ -306,4 +355,62 @@ TEST_F(test, matching_template_per_source_id)
 
     stats st = get_stats();
     ASSERT_EQ(nf9_get_stat(st.get(), NF9_STAT_MISSING_TEMPLATE_ERRORS), 1);
+}
+
+TEST_F(test, detects_too_large_field_length_in_data_flowset)
+{
+    nf9_addr addr = make_inet_addr("192.168.0.123");
+    std::vector<uint8_t> packet;
+    parse_result result;
+
+    // Feed a template with a large field.
+    packet = netflow_packet_builder()
+                 .add_data_template_flowset(0)
+                 .add_data_template(400)
+                 .add_data_template_field(NF9_FIELD_IPV6_DST_ADDR, 16)
+                 .build();
+    result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_NE(result, nullptr);
+
+    // Attempt to parse a data record with a field whose length is shorter than
+    // the length declared in template.
+    packet = netflow_packet_builder()
+                 .add_data_flowset(400)
+                 .add_data_field(uint32_t(123))
+                 .build();
+    result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_NE(result, nullptr);
+
+    ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
+    ASSERT_EQ(nf9_get_num_flows(result.get(), 0), 0);
+}
+
+TEST_F(test, template_with_zero_length_field)
+{
+    nf9_addr addr = make_inet_addr("192.168.0.123");
+    std::vector<uint8_t> packet;
+    parse_result result;
+
+    // Feed a template with a field whose length is 0.
+    packet = netflow_packet_builder()
+                 .add_data_template_flowset(0)
+                 .add_data_template(400)
+                 .add_data_template_field(NF9_FIELD_INPUT_SNMP, 0)
+                 .build();
+    result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_EQ(result, nullptr);
+}
+
+TEST_F(test, empty_template)
+{
+    nf9_addr addr = make_inet_addr("192.168.0.123");
+    std::vector<uint8_t> packet;
+    parse_result result;
+
+    packet = netflow_packet_builder()
+                 .add_data_template_flowset(0)
+                 .add_data_template(400)
+                 .build();
+    result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_EQ(result, nullptr);
 }
