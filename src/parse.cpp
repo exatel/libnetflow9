@@ -83,6 +83,8 @@ static bool parse_data_template(buffer& buf, data_template& result)
 }
 
 static bool parse_data_template_flowset(buffer& buf, nf9_state& state,
+                                        const nf9_addr& addr,
+                                        uint32_t source_id,
                                         nf9_parse_result& result)
 {
     while (buf.remaining() > 0) {
@@ -106,7 +108,8 @@ static bool parse_data_template_flowset(buffer& buf, nf9_state& state,
                 return false;
         }
 
-        state.templates[template_id] = tmpl;
+        exporter_stream_id stream_id = {addr, source_id, template_id};
+        state.templates[stream_id] = tmpl;
     }
     return true;
 }
@@ -147,18 +150,21 @@ static bool parse_flow(buffer& buf, data_template& tmpl, flowset& result)
 }
 
 static bool parse_data_flowset(buffer& buf, nf9_state& state,
-                               uint16_t template_id, nf9_parse_result& result)
+                               uint16_t flowset_id, const nf9_addr& srcaddr,
+                               uint32_t source_id, nf9_parse_result& result)
 {
+    exporter_stream_id stream_id = {srcaddr, source_id, flowset_id};
+
     result.flowsets.push_back(flowset{NF9_FLOWSET_DATA});
 
-    if (state.templates.count(template_id) == 0) {
+    if (state.templates.count(stream_id) == 0) {
         state.stats.missing_template_errors++;
         buf.advance(buf.remaining());
         return true;
     }
 
     flowset& fset = result.flowsets.back();
-    data_template& tmpl = state.templates[template_id];
+    data_template& tmpl = state.templates[stream_id];
 
     while (buf.remaining() > 0) {
         if (!parse_flow(buf, tmpl, fset))
@@ -168,7 +174,8 @@ static bool parse_data_flowset(buffer& buf, nf9_state& state,
     return true;
 }
 
-static bool parse_flowset(buffer& buf, nf9_parse_result& result,
+static bool parse_flowset(buffer& buf, uint32_t source_id,
+                          const nf9_addr& srcaddr, nf9_parse_result& result,
                           nf9_state& state)
 {
     flowset_header header;
@@ -194,7 +201,8 @@ static bool parse_flowset(buffer& buf, nf9_parse_result& result,
     switch (get_flowset_type(header)) {
         case NF9_FLOWSET_TEMPLATE:
             state.stats.templates++;
-            return parse_data_template_flowset(tmpbuf, state, result);
+            return parse_data_template_flowset(tmpbuf, state, srcaddr,
+                                               source_id, result);
 
         case NF9_FLOWSET_OPTIONS:
             state.stats.option_templates++;
@@ -203,7 +211,7 @@ static bool parse_flowset(buffer& buf, nf9_parse_result& result,
         case NF9_FLOWSET_DATA:
             state.stats.records++;
             return parse_data_flowset(tmpbuf, state, ntohs(header.flowset_id),
-                                      result);
+                                      srcaddr, source_id, result);
         default:
             state.stats.malformed_packets++;
             return false;
@@ -213,8 +221,8 @@ static bool parse_flowset(buffer& buf, nf9_parse_result& result,
     assert(0);
 }
 
-bool parse(const uint8_t* data, size_t len, nf9_state* state,
-           nf9_parse_result* result)
+bool parse(const uint8_t* data, size_t len, const nf9_addr& srcaddr,
+           nf9_state* state, nf9_parse_result* result)
 {
     buffer buf{data, len, data};
     netflow_header header;
@@ -224,7 +232,8 @@ bool parse(const uint8_t* data, size_t len, nf9_state* state,
 
     size_t num_flowsets = ntohs(header.count);
     for (size_t i = 0; i < num_flowsets && buf.remaining() > 0; i++) {
-        if (!parse_flowset(buf, *result, *state))
+        if (!parse_flowset(buf, ntohl(header.source_id), srcaddr, *result,
+                           *state))
             return false;
     }
 

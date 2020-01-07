@@ -25,14 +25,32 @@ struct data_template
     size_t total_length;
 };
 
+/* Objects of this type uniquely identify flow streams across all
+ * exporter devices by using a combination of the exporter source IP
+ * address, the source_id field in the Netflow header, and template id. */
+struct exporter_stream_id
+{
+    nf9_addr addr;
+    uint32_t id;
+    uint16_t tid;
+};
+
+namespace std
+{
+template <>
+struct hash<exporter_stream_id>
+{
+    size_t operator()(const exporter_stream_id&) const noexcept;
+};
+}  // namespace std
+
+bool operator==(const exporter_stream_id&, const exporter_stream_id&) noexcept;
+
 struct nf9_state
 {
     int flags;
     nf9_stats stats;
-
-    /* FIXME: The map key should recognize the exporter device
-     * (nf9_addr.) */
-    std::unordered_map<int, data_template> templates;
+    std::unordered_map<exporter_stream_id, data_template> templates;
 };
 
 struct flowset

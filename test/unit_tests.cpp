@@ -115,8 +115,7 @@ TEST_F(test, detects_missing_templates)
 
     stats st = get_stats();
     ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
-    ASSERT_EQ(nf9_get_stat(st.get(), NF9_STAT_MISSING_TEMPLATE_ERRORS),
-              0 /* 1 */);
+    ASSERT_EQ(nf9_get_stat(st.get(), NF9_STAT_MISSING_TEMPLATE_ERRORS), 1);
 }
 
 TEST_F(test, recognizes_template_flowsets)
@@ -241,4 +240,70 @@ TEST_F(test, multiple_data_templates)
     ASSERT_NE(result, nullptr);
 
     EXPECT_EQ(state_->templates.size(), 2);
+}
+
+TEST_F(test, matching_template_per_address)
+{
+    nf9_addr addr1 = make_inet_addr("192.168.0.123");
+    nf9_addr addr2 = make_inet_addr("169.254.0.1");
+    std::vector<uint8_t> packet;
+    parse_result result;
+
+    // Feed data template to the parser using the first address.
+    packet = netflow_packet_builder()
+                 .add_data_template_flowset(0)
+                 .add_data_template(256)
+                 .add_data_template_field(NF9_FIELD_IPV4_SRC_ADDR, 4)
+                 .add_data_template_field(NF9_FIELD_IPV4_DST_ADDR, 4)
+                 .build();
+    result = parse(packet.data(), packet.size(), &addr1);
+    ASSERT_NE(result, nullptr);
+    ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
+    ASSERT_EQ(nf9_get_flowset_type(result.get(), 0), NF9_FLOWSET_TEMPLATE);
+
+    // Attempt to parse data using a template with the same id, but using the
+    // second address.  This should fail, since templates are per (address,
+    // source_id) pair.
+    packet = netflow_packet_builder()
+                 .add_data_flowset(256)
+                 .add_data_field(uint32_t(0))
+                 .add_data_field(uint32_t(0))
+                 .build();
+    result = parse(packet.data(), packet.size(), &addr2);
+
+    // There should be one template matching error.
+    stats st = get_stats();
+    ASSERT_EQ(nf9_get_stat(st.get(), NF9_STAT_MISSING_TEMPLATE_ERRORS), 1);
+}
+
+TEST_F(test, matching_template_per_source_id)
+{
+    nf9_addr addr = make_inet_addr("192.168.0.123");
+    std::vector<uint8_t> packet;
+    parse_result result;
+
+    packet = netflow_packet_builder()
+                 .set_source_id(123)
+                 .add_data_template_flowset(0)
+                 .add_data_template(256)
+                 .add_data_template_field(NF9_FIELD_IPV4_SRC_ADDR, 4)
+                 .add_data_template_field(NF9_FIELD_IPV4_DST_ADDR, 4)
+                 .build();
+    result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_NE(result, nullptr);
+    ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
+    ASSERT_EQ(nf9_get_flowset_type(result.get(), 0), NF9_FLOWSET_TEMPLATE);
+
+    // The template id and source IP address are the same, but source id is
+    // different here.
+    packet = netflow_packet_builder()
+                 .set_source_id(999)
+                 .add_data_flowset(256)
+                 .add_data_field(uint32_t(0))
+                 .add_data_field(uint32_t(0))
+                 .build();
+    result = parse(packet.data(), packet.size(), &addr);
+
+    stats st = get_stats();
+    ASSERT_EQ(nf9_get_stat(st.get(), NF9_STAT_MISSING_TEMPLATE_ERRORS), 1);
 }

@@ -23,7 +23,7 @@ int nf9_parse(nf9_state* state, nf9_parse_result** result, const uint8_t* buf,
     *result = new nf9_parse_result;
     (*result)->addr = *addr;
 
-    if (!parse(buf, len, state, *result)) {
+    if (!parse(buf, len, *addr, state, *result)) {
         state->stats.malformed_packets++;
         nf9_free_parse_result(*result);
         *result = nullptr;
@@ -99,6 +99,8 @@ int nf9_get_stat(const nf9_stats* stats, int stat)
             return stats->option_templates;
         case NF9_STAT_MALFORMED_PACKETS:
             return stats->malformed_packets;
+        case NF9_STAT_MISSING_TEMPLATE_ERRORS:
+            return stats->missing_template_errors;
     }
     return 0;
 }
@@ -106,4 +108,56 @@ int nf9_get_stat(const nf9_stats* stats, int stat)
 void nf9_free_stats(const nf9_stats* stats)
 {
     delete stats;
+}
+
+size_t std::hash<exporter_stream_id>::operator()(
+    const exporter_stream_id& sid) const noexcept
+{
+    size_t ret = sid.id;
+    ret |= sid.tid << 16;
+
+    switch (sid.addr.family) {
+        case AF_INET:
+            ret ^= sid.addr.in.sin_addr.s_addr;
+            ret ^= uint32_t(sid.addr.in.sin_port) << 16;
+            break;
+        case AF_INET6: {
+            // FIXME: The IPv6 address should be normalized here, this is not
+            // reliable.
+            const sockaddr_in6& addr = sid.addr.in6;
+            const size_t* parts =
+                reinterpret_cast<const size_t*>(&addr.sin6_addr);
+            const size_t n = sizeof(addr.sin6_addr) / sizeof(size_t);
+            for (size_t i = 0; i < n; i++)
+                ret ^= parts[i];
+            ret ^= addr.sin6_port;
+            break;
+        }
+        default:
+            break;
+    }
+
+    return ret;
+}
+
+bool operator==(const exporter_stream_id& lhs,
+                const exporter_stream_id& rhs) noexcept
+{
+    if (lhs.id != rhs.id || lhs.tid != rhs.tid ||
+        lhs.addr.family != rhs.addr.family)
+        return false;
+
+    switch (lhs.addr.family) {
+        case AF_INET:
+            return lhs.addr.in.sin_addr.s_addr == rhs.addr.in.sin_addr.s_addr &&
+                   lhs.addr.in.sin_port == rhs.addr.in.sin_port;
+        case AF_INET6:
+            // FIXME: The IPv6 address should be normalized here, this is not
+            // reliable.
+            return memcmp(&lhs.addr.in6.sin6_addr, &rhs.addr.in6.sin6_addr,
+                          sizeof(lhs.addr.in6.sin6_addr)) == 0 &&
+                   lhs.addr.in6.sin6_port == rhs.addr.in6.sin6_port;
+    }
+
+    return true;
 }
