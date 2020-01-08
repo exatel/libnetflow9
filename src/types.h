@@ -5,6 +5,7 @@
 #include <netinet/in.h>
 #include <unordered_map>
 #include <vector>
+#include <variant>
 
 struct nf9_stats
 {
@@ -60,9 +61,16 @@ struct flowset
     /* Empty if this is not a data template flowset. */
     data_template dtemplate;
 
+    /* Empty if this is not a option template flowset. */
+    option_template otemplate;
+
     /* This contains flows in data records.  Empty if this is not a data record
      * flowset. */
     std::vector<flow> flows;
+
+    // TODO - change to variant? Other way of structure initialisation
+    // already deleted compile warnings.
+    // std::variant<data_template, option_template, std::vector<flow>> myk;
 };
 
 struct nf9_parse_result
