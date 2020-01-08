@@ -85,28 +85,29 @@ static bool parse_data_template(buffer& buf, data_template& result)
 static bool parse_data_template_flowset(buffer& buf, nf9_state& state,
                                         nf9_parse_result& result)
 {
-    uint16_t template_id;
-    uint16_t field_count;
+    while (buf.remaining() > 0) {
+        uint16_t template_id;
+        uint16_t field_count;
 
-    if (!buf.get(&template_id, sizeof(template_id)))
-        return false;
-    if (!buf.get(&field_count, sizeof(field_count)))
-        return false;
-
-    template_id = ntohs(template_id);
-    field_count = ntohs(field_count);
-
-    result.flowsets.push_back(flowset{NF9_FLOWSET_TEMPLATE});
-    flowset& f = result.flowsets.back();
-    data_template& tmpl = f.dtemplate;
-
-    while (field_count-- > 0 && buf.remaining() > 0) {
-        if (!parse_data_template(buf, tmpl))
+        if (!buf.get(&template_id, sizeof(template_id)))
             return false;
+        if (!buf.get(&field_count, sizeof(field_count)))
+            return false;
+
+        template_id = ntohs(template_id);
+        field_count = ntohs(field_count);
+
+        result.flowsets.push_back(flowset{NF9_FLOWSET_TEMPLATE});
+        flowset& f = result.flowsets.back();
+        data_template& tmpl = f.dtemplate;
+
+        while (field_count-- > 0 && buf.remaining() > 0) {
+            if (!parse_data_template(buf, tmpl))
+                return false;
+        }
+
+        state.templates[template_id] = tmpl;
     }
-
-    state.templates[template_id] = tmpl;
-
     return true;
 }
 

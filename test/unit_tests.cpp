@@ -223,3 +223,22 @@ TEST_F(test, data_record_underflow)
     // The packet shouldn't be treated as a valid flow.
     ASSERT_EQ(nf9_get_num_flows(result.get(), 0), 0);
 }
+
+TEST_F(test, multiple_data_templates)
+{
+    std::vector<uint8_t> packet =
+        netflow_packet_builder()
+            .add_data_template_flowset(200)
+            .add_data_template(400)
+            .add_data_template_field(NF9_FIELD_IPV4_SRC_ADDR, 4)
+            .add_data_template(401)
+            .add_data_template_field(NF9_FIELD_IPV4_DST_ADDR, 4)
+            .build();
+
+    nf9_addr addr = make_inet_addr("192.168.0.123");
+    parse_result result = parse(packet.data(), packet.size(), &addr);
+
+    ASSERT_NE(result, nullptr);
+
+    EXPECT_EQ(state_->templates.size(), 2);
+}
