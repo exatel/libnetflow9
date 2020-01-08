@@ -25,15 +25,21 @@ TEST_F(test, templates_exceptions)
 
 TEST_F(test, add_flowsets)
 {
-    const int flowset_id = 100;
+    const int flowset_id = 100, template_id = 400;
     std::vector<uint8_t> packet = netflow_packet_builder()
                                       .add_data_template_flowset(flowset_id)
+                                      .add_data_template(template_id)
                                       .add_data_template_flowset(flowset_id + 1)
+                                      .add_data_template(template_id + 1)
                                       .add_data_template_flowset(flowset_id + 2)
+                                      .add_data_template(template_id + 2)
                                       .add_data_template_flowset(flowset_id + 3)
+                                      .add_data_template(template_id + 3)
                                       .build();
     nf9_addr addr = make_inet_addr("192.192.192.192");
     parse_result result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_NE(result, nullptr);
+
     const int flowsets_num = nf9_get_num_flowsets(result.get());
     ASSERT_EQ(4, flowsets_num);
 }
@@ -52,7 +58,7 @@ TEST_F(test, add_option_template_data)
     nf9_addr addr = make_inet_addr("192.192.192.193");
     parse_result result = parse(packet.data(), packet.size(), &addr);
     ASSERT_NE(result, nullptr);
-    ASSERT_EQ(1, nf9_get_num_flowsets(result.get()));
+    ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
     ASSERT_EQ(nf9_get_flowset_type(result.get(), 0), NF9_FLOWSET_OPTIONS);
 
     // decode data with option template
@@ -62,11 +68,16 @@ TEST_F(test, add_option_template_data)
                  .add_data_field(uint32_t(2000000))
                  .build();
     result = parse(packet.data(), packet.size(), &addr);
-    nf9_value system =
-        nf9_get_field(result.get(), 0, 0, NF9_SCOPE_FIELD_SYSTEM);
-    nf9_value vrf = nf9_get_field(result.get(), 0, 0, NF9_FIELD_Ingress_VRFID);
-    ASSERT_EQ(system.u32, 0);  // 0 because get_field is defined in Michał PR
-    ASSERT_EQ(vrf.u32, 0);     // same here
+    ASSERT_NE(result, nullptr);
+    ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
+    ASSERT_EQ(nf9_get_num_flows(result.get(), 0), 0 /* 1 */);
+
+    // TODO: Uncomment when option parsing is implemented
+    // nf9_value system =
+    //     nf9_get_field(result.get(), 0, 0, NF9_SCOPE_FIELD_SYSTEM);
+    // nf9_value vrf = nf9_get_field(result.get(), 0, 0,
+    // NF9_FIELD_Ingress_VRFID); ASSERT_EQ(system.u32, 1000000);
+    // ASSERT_EQ(vrf.u32, 2000000);
 }
 
 TEST_F(test, returns_same_ipv4_address)
