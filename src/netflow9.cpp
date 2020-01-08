@@ -76,11 +76,6 @@ void nf9_free_parse_result(nf9_parse_result* pr)
     delete pr;
 }
 
-nf9_addr nf9_get_addr(const nf9_parse_result* pr)
-{
-    return pr->addr;
-}
-
 const nf9_stats* nf9_get_stats(const nf9_state* state)
 {
     nf9_stats* stats = new nf9_stats;

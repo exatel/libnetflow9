@@ -18,6 +18,7 @@ extern "C" {
 #endif
 
 enum nf9_state_flags {
+    // NF9 reserved
     NF9_THREAD_SAFE = 1,
 };
 typedef struct nf9_state nf9_state;
@@ -277,6 +278,15 @@ enum nf9_field {
     NF9_FIELD_Egress_VRFID,
 };
 
+enum nf9_scope_field {
+    NF9_SCOPE_FIELD_NONE,
+    NF9_SCOPE_FIELD_SYSTEM,
+    NF9_SCOPE_FIELD_INTERFACE,
+    NF9_SCOPE_FIELD_LINE_CARD,
+    NF9_SCOPE_FIELD_NETFLOW_CACHE,
+    NF9_SCOPE_FIELD_TEMPLATE,
+};
+
 union nf9_value {
     uint32_t u32;
     uint64_t u64;
@@ -305,8 +315,6 @@ NF9_API int nf9_get_flowset_type(const nf9_parse_result* pr, int flowset);
 NF9_API size_t nf9_get_num_flows(const nf9_parse_result* pr, int flowset);
 NF9_API nf9_value nf9_get_field(const nf9_parse_result* pr, int flowset,
                                 int flow, int field);
-
-NF9_API nf9_addr nf9_get_addr(const nf9_parse_result* pr);
 
 enum nf9_stat_fields {
     NF9_STAT_PROCESSED_PACKETS,

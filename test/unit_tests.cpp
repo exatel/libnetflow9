@@ -59,28 +59,6 @@ TEST_F(test, add_option_template_data)
     // ASSERT_EQ(vrf.u32, 2000000);
 }
 
-TEST_F(test, returns_same_ipv4_address)
-{
-    std::vector<uint8_t> packet = netflow_packet_builder().build();
-    nf9_addr addr = make_inet_addr("192.168.0.1");
-    parse_result result = parse(packet.data(), packet.size(), &addr);
-    ASSERT_NE(result, nullptr);
-
-    nf9_addr returned_addr = nf9_get_addr(result.get());
-    ASSERT_EQ(address_to_string(returned_addr), address_to_string(addr));
-}
-
-TEST_F(test, returns_same_ipv6_address)
-{
-    std::vector<uint8_t> packet = netflow_packet_builder().build();
-    nf9_addr addr = make_inet6_addr("1:0:0:0:0:0:0:8");
-    parse_result result = parse(packet.data(), packet.size(), &addr);
-    ASSERT_NE(result, nullptr);
-
-    nf9_addr returned_addr = nf9_get_addr(result.get());
-    ASSERT_EQ(address_to_string(returned_addr), address_to_string(addr));
-}
-
 TEST_F(test, packet_too_short)
 {
     nf9_addr addr = make_inet_addr("192.168.0.1");

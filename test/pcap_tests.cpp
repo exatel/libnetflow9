@@ -32,8 +32,6 @@ protected:
 TEST_F(pcap_test, basic_test)
 {
     std::vector<parse_result> parsed_pcap = parse_pcap("testcases/1.pcap");
-    nf9_addr addr = nf9_get_addr(parsed_pcap.at(0).get());
-    EXPECT_EQ(addr.in.sin_addr.s_addr, inet_addr("172.17.0.5"));
 
     std::vector<uint32_t> src_ips;
     for (const auto &pr : parsed_pcap) {

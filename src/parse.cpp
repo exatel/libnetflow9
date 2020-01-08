@@ -188,6 +188,66 @@ static bool parse_option_template_flowset(buffer& buf, nf9_state& state,
     return true;
 }
 
+static bool parse_option_template(buffer& buf, option_template& result,
+				  uint16_t option_scope_length,
+				  uint16_t option_length)
+{
+    uint16_t type;
+    uint16_t length;
+
+    while (option_scope_length && buf.remaining() > 0) {
+	if (!parse_template_field(buf, type, length))
+	    return false;
+	result.scope_fields.emplace_back(type, length);
+	result.total_length += length;
+	option_scope_length -= sizeof(type) + sizeof(length);
+    }
+
+    while (option_length && buf.remaining() > 0) {
+	if (!parse_template_field(buf, type, length))
+	    return false;
+	result.option_fields.emplace_back(type, length);
+	result.total_length += length;
+	option_length -= sizeof(type) + sizeof(length);
+    }
+
+    return true;
+}
+
+static bool parse_option_template_flowset(buffer& buf, nf9_state& state,
+                                          nf9_parse_result& result)
+{
+    uint16_t template_id;
+    uint16_t option_scope_length;
+    uint16_t option_length;
+
+    if (!buf.get(&template_id, sizeof(template_id)))
+        return false;
+
+    if (!buf.get(&option_scope_length, sizeof(option_scope_length)))
+        return false;
+
+    if (!buf.get(&option_length, sizeof(option_length)))
+        return false;
+
+    template_id = ntohs(template_id);
+    option_scope_length = ntohs(option_scope_length);
+    option_length = ntohs(option_length);
+
+    flowset fset = flowset();
+    fset.type = NF9_FLOWSET_OPTIONS;
+    result.flowsets.push_back(fset);
+    flowset& f = result.flowsets.back();
+    option_template& tmpl = f.otemplate;
+
+    if (!parse_option_template(buf, tmpl, option_scope_length, option_length))
+	return false;
+
+    //state.templates[template_id] = tmpl;
+
+    return true;
+}
+
 static bool parse_flow(buffer& buf, data_template& tmpl, flowset& result)
 {
     if (tmpl.fields.empty()) {

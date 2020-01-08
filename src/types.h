@@ -72,7 +72,11 @@ struct nf9_state
 {
     int flags;
     nf9_stats stats;
-    std::unordered_map<exporter_stream_id, data_template> templates;
+
+    /* FIXME: The map key should recognize the exporter device
+     * (nf9_addr.) */
+    std::unordered_map<int, data_template> templates;
+    std::unordered_map<int, option_template> option_templates;
 };
 
 struct flowset
