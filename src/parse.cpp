@@ -62,13 +62,13 @@ static bool parse_header(buffer& buf, netflow_header& hdr)
     return true;
 }
 
-static bool parse_template_field(buffer& buf, uint16_t &type, uint16_t &length)
+static bool parse_template_field(buffer& buf, uint16_t& type, uint16_t& length)
 {
     if (!buf.get(&type, sizeof(type)))
-	return false;
+        return false;
 
     if (!buf.get(&length, sizeof(length)))
-	return false;
+        return false;
 
     type = ntohs(type);
     length = ntohs(length);
@@ -128,33 +128,47 @@ static bool parse_data_template_flowset(buffer& buf, nf9_state& state,
     return true;
 }
 
-static bool parse_option_template(buffer& buf, option_template& result,
-				  uint16_t option_scope_length,
-				  uint16_t option_length)
+static bool parse_option_template(buffer& buf, data_template& result,
+                                  uint16_t option_scope_length,
+                                  uint16_t option_length)
 {
     uint16_t type;
     uint16_t length;
 
     while (option_scope_length && buf.remaining() > 0) {
-	if (!parse_template_field(buf, type, length))
-	    return false;
-	result.scope_fields.emplace_back(type, length);
-	result.total_length += length;
-	option_scope_length -= sizeof(type) + sizeof(length);
+        if (!parse_template_field(buf, type, length))
+            return false;
+        if (length == 0)
+            return false;
+
+        uint32_t type_u32 = static_cast<uint32_t>(type) | NF9_FIELDMASK_SCOPE;
+        result.fields.emplace_back(type_u32, length);
+        result.total_length += length;
+        if (option_scope_length < sizeof(type) + sizeof(length))
+            return false;
+        option_scope_length -= sizeof(type) + sizeof(length);
     }
 
     while (option_length && buf.remaining() > 0) {
-	if (!parse_template_field(buf, type, length))
-	    return false;
-	result.option_fields.emplace_back(type, length);
-	result.total_length += length;
-	option_length -= sizeof(type) + sizeof(length);
+        if (!parse_template_field(buf, type, length))
+            return false;
+        if (length == 0)
+            return false;
+
+        uint32_t type_u32 = static_cast<uint32_t>(type) | NF9_FIELDMASK_DATA;
+        result.fields.emplace_back(type_u32, length);
+        result.total_length += length;
+        if (option_length < sizeof(type) + sizeof(length))
+            return false;
+        option_length -= sizeof(type) + sizeof(length);
     }
 
     return true;
 }
 
 static bool parse_option_template_flowset(buffer& buf, nf9_state& state,
+                                          const nf9_addr& addr,
+                                          uint32_t source_id,
                                           nf9_parse_result& result)
 {
     uint16_t template_id;
@@ -178,72 +192,17 @@ static bool parse_option_template_flowset(buffer& buf, nf9_state& state,
     fset.type = NF9_FLOWSET_OPTIONS;
     result.flowsets.push_back(fset);
     flowset& f = result.flowsets.back();
-    option_template& tmpl = f.otemplate;
+    data_template& tmpl = f.dtemplate;
 
     if (!parse_option_template(buf, tmpl, option_scope_length, option_length))
-	return false;
-
-    //state.templates[template_id] = tmpl;
-
-    return true;
-}
-
-static bool parse_option_template(buffer& buf, option_template& result,
-				  uint16_t option_scope_length,
-				  uint16_t option_length)
-{
-    uint16_t type;
-    uint16_t length;
-
-    while (option_scope_length && buf.remaining() > 0) {
-	if (!parse_template_field(buf, type, length))
-	    return false;
-	result.scope_fields.emplace_back(type, length);
-	result.total_length += length;
-	option_scope_length -= sizeof(type) + sizeof(length);
-    }
-
-    while (option_length && buf.remaining() > 0) {
-	if (!parse_template_field(buf, type, length))
-	    return false;
-	result.option_fields.emplace_back(type, length);
-	result.total_length += length;
-	option_length -= sizeof(type) + sizeof(length);
-    }
-
-    return true;
-}
-
-static bool parse_option_template_flowset(buffer& buf, nf9_state& state,
-                                          nf9_parse_result& result)
-{
-    uint16_t template_id;
-    uint16_t option_scope_length;
-    uint16_t option_length;
-
-    if (!buf.get(&template_id, sizeof(template_id)))
         return false;
 
-    if (!buf.get(&option_scope_length, sizeof(option_scope_length)))
+    if (tmpl.total_length == 0)
         return false;
 
-    if (!buf.get(&option_length, sizeof(option_length)))
-        return false;
+    exporter_stream_id stream_id = {addr, source_id, template_id};
 
-    template_id = ntohs(template_id);
-    option_scope_length = ntohs(option_scope_length);
-    option_length = ntohs(option_length);
-
-    flowset fset = flowset();
-    fset.type = NF9_FLOWSET_OPTIONS;
-    result.flowsets.push_back(fset);
-    flowset& f = result.flowsets.back();
-    option_template& tmpl = f.otemplate;
-
-    if (!parse_option_template(buf, tmpl, option_scope_length, option_length))
-	return false;
-
-    //state.templates[template_id] = tmpl;
+    state.templates[stream_id] = tmpl;
 
     return true;
 }
@@ -264,7 +223,7 @@ static bool parse_flow(buffer& buf, data_template& tmpl, flowset& result)
     flow& f = result.flows.back();
 
     for (const template_field& tf : tmpl.fields) {
-        int type = tf.first;
+        uint32_t type = tf.first;
         size_t field_length = tf.second;
 
         if (field_length > buf.remaining())
@@ -273,8 +232,7 @@ static bool parse_flow(buffer& buf, data_template& tmpl, flowset& result)
         if (field_length == 0)
             break;
 
-        std::vector<uint8_t> field_value;
-        field_value.assign(field_length, 0);
+        std::vector<uint8_t> field_value(field_length, 0);
         buf.get(field_value.data(), field_length);
 
         f[type] = field_value;
@@ -300,8 +258,7 @@ static bool parse_data_flowset(buffer& buf, nf9_state& state,
     }
 
     flowset& f = result.flowsets.back();
-    data_template& tmpl = state.templates[stream_id];
-
+    auto tmpl = state.templates[stream_id];
     while (buf.remaining() > 0) {
         if (!parse_flow(buf, tmpl, f))
             return false;
@@ -342,7 +299,8 @@ static bool parse_flowset(buffer& buf, uint32_t source_id,
 
         case NF9_FLOWSET_OPTIONS:
             state.stats.option_templates++;
-	    return parse_option_template_flowset(tmpbuf, state, result);
+            return parse_option_template_flowset(tmpbuf, state, srcaddr,
+                                                 source_id, result);
             return true;
 
         case NF9_FLOWSET_DATA:

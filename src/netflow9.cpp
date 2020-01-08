@@ -48,27 +48,25 @@ size_t nf9_get_num_flows(const nf9_parse_result* pr, int flowset)
     return pr->flowsets[flowset].flows.size();
 }
 
-nf9_value nf9_get_field(const nf9_parse_result* pr, int flowset, int flownum,
-                        int field)
+int nf9_get_field(const nf9_parse_result* pr, int flowset, int flownum,
+                  int field, void* dst, size_t* length)
 {
+    if (flowset >= pr->flowsets.size())
+        return 1;
+    if (flownum >= pr->flowsets[flowset].flows.size())
+        return 1;
+    if (pr->flowsets[flowset].flows[flownum].count(field) == 0)
+        return 1;
     const std::vector<uint8_t>& value =
         pr->flowsets[flowset].flows[flownum].at(field);
 
-    nf9_value ret;
-    switch (value.size()) {
-        case sizeof(uint32_t):
-            ret.u32 = *reinterpret_cast<const uint32_t*>(value.data());
-            break;
-        case sizeof(uint64_t):
-            ret.u64 = *reinterpret_cast<const uint64_t*>(value.data());
-            break;
-        default:
-            ret.data = {};
-            ret.data.bytes = value.data();
-            ret.data.length = value.size();
-            break;
-    }
-    return ret;
+    if (*length < value.size())
+        return 1;
+
+    memcpy(dst, value.data(), value.size());
+    *length = value.size();
+
+    return 0;
 }
 
 void nf9_free_parse_result(nf9_parse_result* pr)

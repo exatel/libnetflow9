@@ -49,7 +49,7 @@ TEST_F(test, add_option_template_data)
     result = parse(packet.data(), packet.size(), &addr);
     ASSERT_NE(result, nullptr);
     ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
-    ASSERT_EQ(nf9_get_num_flows(result.get(), 0), 0 /* 1 */);
+    ASSERT_EQ(nf9_get_num_flows(result.get(), 0), 1);
 
     // TODO: Uncomment when option parsing is implemented
     // nf9_value system =
@@ -175,8 +175,10 @@ TEST_F(test, recognizes_data_flowsets)
 
 TEST_F(test, recognizes_option_flowsets)
 {
-    std::vector<uint8_t> packet =
-        netflow_packet_builder().add_option_template_flowset(900).build();
+    std::vector<uint8_t> packet = netflow_packet_builder()
+                                      .add_option_template_flowset(900)
+                                      .add_option_field(NF9_FIELD_F26, 4)
+                                      .build();
 
     nf9_addr addr = make_inet_addr("192.168.0.123");
     parse_result result = parse(packet.data(), packet.size(), &addr);
@@ -185,7 +187,6 @@ TEST_F(test, recognizes_option_flowsets)
     ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
     ASSERT_EQ(nf9_get_flowset_type(result.get(), 0), NF9_FLOWSET_OPTIONS);
 }
-
 TEST_F(test, parsing_data_flowset_from_template)
 {
     nf9_addr addr = make_inet_addr("192.168.0.123");
@@ -216,10 +217,16 @@ TEST_F(test, parsing_data_flowset_from_template)
     ASSERT_EQ(nf9_get_num_flows(result.get(), 0), 1);
     ASSERT_EQ(nf9_get_flowset_type(result.get(), 0), NF9_FLOWSET_DATA);
 
-    nf9_value src = nf9_get_field(result.get(), 0, 0, NF9_FIELD_IPV4_SRC_ADDR);
-    nf9_value dst = nf9_get_field(result.get(), 0, 0, NF9_FIELD_IPV4_DST_ADDR);
-    ASSERT_EQ(src.u32, 875770417);
-    ASSERT_EQ(dst.u32, 943142453);
+    uint32_t src, dst;
+    size_t len = sizeof(uint32_t);
+    ASSERT_EQ(
+        nf9_get_field(result.get(), 0, 0, NF9_FIELD_IPV4_SRC_ADDR, &src, &len),
+        0);
+    ASSERT_EQ(
+        nf9_get_field(result.get(), 0, 0, NF9_FIELD_IPV4_DST_ADDR, &dst, &len),
+        0);
+    ASSERT_EQ(src, 875770417);
+    ASSERT_EQ(dst, 943142453);
 }
 
 TEST_F(test, data_record_underflow)

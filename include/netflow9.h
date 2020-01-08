@@ -39,6 +39,9 @@ NF9_API int nf9_parse(nf9_state* state, nf9_parse_result** result,
 
 NF9_API void nf9_free_parse_result(nf9_parse_result* result);
 
+#define NF9_FIELDMASK_DATA 0
+#define NF9_FIELDMASK_SCOPE 1 << 31
+
 enum nf9_field {
     NF9_FIELD_F0,
     NF9_FIELD_IN_BYTES,
@@ -279,27 +282,12 @@ enum nf9_field {
 };
 
 enum nf9_scope_field {
-    NF9_SCOPE_FIELD_NONE,
+    NF9_SCOPE_FIELD_NONE = 0 | NF9_FIELDMASK_SCOPE,
     NF9_SCOPE_FIELD_SYSTEM,
     NF9_SCOPE_FIELD_INTERFACE,
     NF9_SCOPE_FIELD_LINE_CARD,
     NF9_SCOPE_FIELD_NETFLOW_CACHE,
     NF9_SCOPE_FIELD_TEMPLATE,
-};
-
-union nf9_value {
-    uint32_t u32;
-    uint64_t u64;
-    struct
-    {
-        uint64_t upper;
-        uint64_t lower;
-    } u128;
-    struct
-    {
-        size_t length;
-        const void* bytes;
-    } data;
 };
 
 NF9_API size_t nf9_get_num_flowsets(const nf9_parse_result* pr);
@@ -313,9 +301,8 @@ enum nf9_flowset_type {
 NF9_API int nf9_get_flowset_type(const nf9_parse_result* pr, int flowset);
 
 NF9_API size_t nf9_get_num_flows(const nf9_parse_result* pr, int flowset);
-NF9_API nf9_value nf9_get_field(const nf9_parse_result* pr, int flowset,
-                                int flow, int field);
-
+NF9_API int nf9_get_field(const nf9_parse_result* pr, int flowset, int flow,
+                          int field, void* dst, size_t* length);
 enum nf9_stat_fields {
     NF9_STAT_PROCESSED_PACKETS,
     NF9_STAT_MALFORMED_PACKETS,

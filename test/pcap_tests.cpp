@@ -37,11 +37,17 @@ TEST_F(pcap_test, basic_test)
     for (const auto &pr : parsed_pcap) {
         for (size_t flowset = 0; flowset < nf9_get_num_flowsets(pr.get());
              ++flowset) {
+            if (nf9_get_flowset_type(pr.get(), flowset) != NF9_FLOWSET_DATA)
+                continue;
             for (size_t flownum = 0;
                  flownum < nf9_get_num_flows(pr.get(), flowset); ++flownum) {
-                nf9_value field = nf9_get_field(pr.get(), flowset, flownum,
-                                                NF9_FIELD_IPV4_SRC_ADDR);
-                src_ips.push_back(field.u32);
+                uint32_t src;
+                size_t len = sizeof(uint32_t);
+                if (nf9_get_field(pr.get(), flowset, flownum,
+                                  NF9_FIELD_IPV4_SRC_ADDR, &src, &len))
+                    continue;
+
+                src_ips.push_back(src);
             }
         }
     }
@@ -59,10 +65,7 @@ TEST_F(pcap_test, basic_stats_test)
     EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_TOTAL_RECORDS), 4);
     EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_TOTAL_TEMPLATES), 2);
     EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_TOTAL_OPTION_TEMPLATES), 2);
-    // FIXME: There are no missing templates here, but we don't have option
-    // record parsing yet.  There are 2 option records in this PCAP.
-    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MISSING_TEMPLATE_ERRORS),
-              2 /* 0 */);
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MISSING_TEMPLATE_ERRORS), 0);
     EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 0);
 }
 
@@ -93,7 +96,7 @@ TEST_F(pcap_test, malformed_3_test)
     std::vector<parse_result> pr = parse_pcap("testcases/malformed_3.pcap");
     stats st = get_stats();
 
-    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 0 /* 20 */);
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 1);
 }
 
 TEST_F(pcap_test, malformed_4_test)

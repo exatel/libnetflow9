@@ -4,8 +4,8 @@
 #include <netflow9.h>
 #include <netinet/in.h>
 #include <unordered_map>
-#include <vector>
 #include <variant>
+#include <vector>
 
 struct nf9_stats
 {
@@ -17,7 +17,7 @@ struct nf9_stats
     int missing_template_errors = 0;
 };
 
-using template_field = std::pair<int, int>;
+using template_field = std::pair<uint32_t, int>;
 using flow = std::unordered_map<int, std::vector<uint8_t>>;
 
 struct data_template
@@ -75,8 +75,7 @@ struct nf9_state
 
     /* FIXME: The map key should recognize the exporter device
      * (nf9_addr.) */
-    std::unordered_map<int, data_template> templates;
-    std::unordered_map<int, option_template> option_templates;
+    std::unordered_map<exporter_stream_id, data_template> templates;
 };
 
 struct flowset
@@ -86,16 +85,9 @@ struct flowset
     /* Empty if this is not a data template flowset. */
     data_template dtemplate;
 
-    /* Empty if this is not a option template flowset. */
-    option_template otemplate;
-
     /* This contains flows in data records.  Empty if this is not a data record
      * flowset. */
     std::vector<flow> flows;
-
-    // TODO - change to variant? Other way of structure initialisation
-    // already deleted compile warnings.
-    // std::variant<data_template, option_template, std::vector<flow>> myk;
 };
 
 struct nf9_parse_result
