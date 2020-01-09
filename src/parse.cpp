@@ -8,6 +8,19 @@ struct flowset_header
     uint16_t length;
 };
 
+struct data_template_header
+{
+    uint16_t template_id;
+    uint16_t field_count;
+};
+
+struct option_template_header
+{
+    uint16_t template_id;
+    uint16_t option_scope_length;
+    uint16_t option_length;
+};
+
 // Cursor for a byte buffer.  Allows safely retrieving values from the
 // underlying buffer.
 struct buffer
@@ -84,7 +97,7 @@ static bool parse_data_template(buffer& buf, data_template& result)
     uint16_t length;
 
     if (!parse_template_field(buf, type, length))
-	return false;
+        return false;
 
     result.fields.emplace_back(type, length);
     result.total_length += length;
@@ -98,21 +111,14 @@ static bool parse_data_template_flowset(buffer& buf, nf9_state& state,
                                         nf9_parse_result& result)
 {
     while (buf.remaining() > 0) {
-        uint16_t template_id;
-        uint16_t field_count;
-
-        if (!buf.get(&template_id, sizeof(template_id)))
-            return false;
-        if (!buf.get(&field_count, sizeof(field_count)))
+        data_template_header header;
+        if (!buf.get(&header, sizeof(header)))
             return false;
 
-        template_id = ntohs(template_id);
-        field_count = ntohs(field_count);
-        flowset fset = flowset();
-        fset.type = NF9_FLOWSET_TEMPLATE;
-        result.flowsets.push_back(fset);
-        flowset& f = result.flowsets.back();
+        flowset& f = result.flowsets.emplace_back(flowset{});
+        f.type = NF9_FLOWSET_TEMPLATE;
         data_template& tmpl = f.dtemplate;
+        uint16_t field_count = ntohs(header.field_count);
 
         while (field_count-- > 0 && buf.remaining() > 0) {
             if (!parse_data_template(buf, tmpl))
@@ -122,7 +128,8 @@ static bool parse_data_template_flowset(buffer& buf, nf9_state& state,
         if (tmpl.total_length == 0)
             return false;
 
-        exporter_stream_id stream_id = {addr, source_id, template_id};
+        exporter_stream_id stream_id = {addr, source_id,
+                                        ntohs(header.template_id)};
         state.templates[stream_id] = tmpl;
     }
     return true;
@@ -171,39 +178,26 @@ static bool parse_option_template_flowset(buffer& buf, nf9_state& state,
                                           uint32_t source_id,
                                           nf9_parse_result& result)
 {
-    uint16_t template_id;
-    uint16_t option_scope_length;
-    uint16_t option_length;
-
-    if (!buf.get(&template_id, sizeof(template_id)))
+    option_template_header header;
+    if (!buf.get(&header, sizeof(header)))
         return false;
 
-    if (!buf.get(&option_scope_length, sizeof(option_scope_length)))
-        return false;
-
-    if (!buf.get(&option_length, sizeof(option_length)))
-        return false;
-
-    template_id = ntohs(template_id);
-    option_scope_length = ntohs(option_scope_length);
-    option_length = ntohs(option_length);
-
-    flowset fset = flowset();
-    fset.type = NF9_FLOWSET_OPTIONS;
-    result.flowsets.push_back(fset);
-    flowset& f = result.flowsets.back();
+    flowset& f = result.flowsets.emplace_back(flowset{});
+    f.type = NF9_FLOWSET_OPTIONS;
     data_template& tmpl = f.dtemplate;
 
-    if (!parse_option_template(buf, tmpl, option_scope_length, option_length))
+    if (!parse_option_template(buf, tmpl, ntohs(header.option_scope_length),
+                               ntohs(header.option_length)))
         return false;
 
     if (tmpl.total_length == 0)
         return false;
 
-    exporter_stream_id stream_id = {addr, source_id, template_id};
-
+    exporter_stream_id stream_id = {addr, source_id, ntohs(header.template_id)};
     state.templates[stream_id] = tmpl;
 
+    // omit padding bytes
+    buf.advance(buf.remaining());
     return true;
 }
 
@@ -247,9 +241,8 @@ static bool parse_data_flowset(buffer& buf, nf9_state& state,
 {
     exporter_stream_id stream_id = {srcaddr, source_id, flowset_id};
 
-    flowset fset = flowset();
-    fset.type = NF9_FLOWSET_DATA;
-    result.flowsets.push_back(fset);
+    flowset& f = result.flowsets.emplace_back(flowset{});
+    f.type = NF9_FLOWSET_DATA;
 
     if (state.templates.count(stream_id) == 0) {
         state.stats.missing_template_errors++;
@@ -257,8 +250,7 @@ static bool parse_data_flowset(buffer& buf, nf9_state& state,
         return true;
     }
 
-    flowset& f = result.flowsets.back();
-    auto tmpl = state.templates[stream_id];
+    data_template& tmpl = state.templates[stream_id];
     while (buf.remaining() > 0) {
         if (!parse_flow(buf, tmpl, f))
             return false;

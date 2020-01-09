@@ -80,19 +80,23 @@ TEST_F(pcap_test, malformed_1_test)
 
 TEST_F(pcap_test, malformed_2_test)
 {
+    /*
+     * This PCAP has 16 packets.  In each packet, there is a flowset that has
+     * length equal to 1, which is invalid.  The minimum length of a flowset is
+     * 4 bytes.
+     */
     std::vector<parse_result> pr = parse_pcap("testcases/malformed_2.pcap");
     stats st = get_stats();
 
-    // This PCAP has 16 packets.  In each packet, there is a flowset that has
-    // length equal to 1, which is invalid.  The minimum length of a flowset is
-    // 4 bytes.
     EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 16);
 }
 
 TEST_F(pcap_test, malformed_3_test)
 {
-    // FIXME: Why is this PCAP malformed?  It looks correct, except for the fact
-    // that template definitions are missing.
+    /*
+     * The PCAP contains a Netflow packet where one option template
+     * has option length equals zero.
+     */
     std::vector<parse_result> pr = parse_pcap("testcases/malformed_3.pcap");
     stats st = get_stats();
 
@@ -101,7 +105,8 @@ TEST_F(pcap_test, malformed_3_test)
 
 TEST_F(pcap_test, malformed_4_test)
 {
-    /* The PCAP contains a Netflow packet where one flowset
+    /*
+     * The PCAP contains a Netflow packet where one flowset
      * has length that equals zero.
      */
     std::vector<parse_result> pr = parse_pcap("testcases/malformed_4.pcap");
@@ -112,7 +117,8 @@ TEST_F(pcap_test, malformed_4_test)
 
 TEST_F(pcap_test, malformed_5_test)
 {
-    /* The PCAP contains a Netflow packet where one flowset has no
+    /*
+     * The PCAP contains a Netflow packet where one flowset has no
      * option fields and scope field with length equals zero.
      */
     std::vector<parse_result> pr = parse_pcap("testcases/malformed_5.pcap");
