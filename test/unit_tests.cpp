@@ -65,6 +65,19 @@ TEST_F(test, packet_too_short)
     std::vector<uint8_t> packet = netflow_packet_builder().build();
 
     parse_result result = parse(packet.data(), packet.size() - 1, &addr);
+    stats st = get_stats();
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 1);
+    ASSERT_EQ(result, nullptr);
+}
+
+TEST_F(test, empty_packet)
+{
+    nf9_addr addr = make_inet_addr("192.168.0.1");
+    std::vector<uint8_t> packet = {};
+
+    parse_result result = parse(packet.data(), packet.size(), &addr);
+    stats st = get_stats();
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 1);
     ASSERT_EQ(result, nullptr);
 }
 
