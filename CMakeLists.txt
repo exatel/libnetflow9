@@ -45,16 +45,6 @@ else ()
     "-Wshadow"
     "-Wformat=2"
   )
-  if (CMAKE_BUILD_TYPE MATCHES Debug)
-    target_compile_options(netflow9 PRIVATE
-      "-ggdb"
-      "-fprofile-arcs"
-      "--coverage"
-      "-ftest-coverage"
-      "-fdiagnostics-show-option"
-    )
-    target_link_libraries(netflow9 gcov)
-  endif ()
 endif ()
 
 install(TARGETS netflow9

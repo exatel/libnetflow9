@@ -26,13 +26,7 @@ target_include_directories(netflowtests PRIVATE
   )
 target_link_libraries(netflowtests
   netflow9
-  gcov
   GTest::GTest
   GTest::Main
   "${LIBTINS_LIBRARIES}"
-  )
-target_compile_options(netflowtests PRIVATE
-  "-ggdb"
-  "-fprofile-arcs"
-  "-ftest-coverage"
   )
