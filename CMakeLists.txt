@@ -53,6 +53,7 @@ else ()
       "-ftest-coverage"
       "-fdiagnostics-show-option"
     )
+    target_link_libraries(netflow9 gcov)
   endif ()
 endif ()
 
