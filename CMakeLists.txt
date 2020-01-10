@@ -1,9 +1,11 @@
 cmake_minimum_required(VERSION 3.7)
 project(libnetflow CXX)
 
-set(NF9_MAKE_SHARED ON)
-set(NF9_BUILD_TESTS ON)
+option(NF9_MAKE_SHARED "If set, build a shared library version" ON)
+option(NF9_BUILD_TESTS "If set, build unit tests (requires googletest)" ON)
 option(NF9_FUZZ "Enable fuzzing with LLVM fuzzer" OFF)
+option(NF9_BUILD_BENCHMARK
+  "If set, build benchmarks (requires google benchmark library)" OFF)
 
 if (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
@@ -18,7 +20,7 @@ if (NF9_MAKE_SHARED)
   set_target_properties(netflow9 PROPERTIES
     PUBLIC_HEADER "${CXX_HEADERS}"
     DEFINE_SYMBOL "NF9_BUILD")
-  target_compile_options(netflow9 PRIVATE -fvisibility=hidden)
+  target_compile_options(netflow9 PRIVATE "-fvisibility=hidden")
 else ()
   add_library(netflow9 STATIC ${CXX_SRC})
 endif ()
@@ -56,6 +58,10 @@ install(TARGETS netflow9
 if (NF9_BUILD_TESTS)
   add_subdirectory(test)
 endif ()
+
+if (NF9_BUILD_BENCHMARK)
+  add_subdirectory(benchmark)
+endif()
 
 if (NF9_FUZZ)
   add_subdirectory(fuzz)
