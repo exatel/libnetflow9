@@ -124,7 +124,18 @@ TEST_F(pcap_test, malformed_5_test)
     std::vector<parse_result> pr = parse_pcap("testcases/malformed_5.pcap");
     stats st = get_stats();
 
-    // FIXME: Actually, it's not malformed.  A data record is missing a template
-    // in this test.
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 1);
+}
+
+TEST_F(pcap_test, malformed_6_test)
+{
+    /*
+     * The PCAP contains a Netflow packet where first flowset contains normal
+     * option template but second has length that is greater than zero
+     * and less than 4 bytes.
+     */
+    std::vector<parse_result> pr = parse_pcap("testcases/malformed_6.pcap");
+    stats st = get_stats();
+
     EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 1);
 }
