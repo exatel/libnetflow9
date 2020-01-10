@@ -49,7 +49,7 @@ size_t nf9_get_num_flows(const nf9_parse_result* pr, int flowset)
 }
 
 int nf9_get_field(const nf9_parse_result* pr, int flowset, int flownum,
-                  int field, void* dst, size_t* length)
+                  nf9_field field, void* dst, size_t* length)
 {
     if (flowset >= pr->flowsets.size())
         return 1;

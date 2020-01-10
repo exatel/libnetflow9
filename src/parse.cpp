@@ -148,8 +148,8 @@ static bool parse_option_template(buffer& buf, data_template& result,
         if (length == 0)
             return false;
 
-        uint32_t type_u32 = static_cast<uint32_t>(type) | NF9_FIELDMASK_SCOPE;
-        result.fields.emplace_back(type_u32, length);
+        nf9_field field_type = NF9_SCOPE_FIELD(type);
+        result.fields.emplace_back(field_type, length);
         result.total_length += length;
         if (option_scope_length < sizeof(type) + sizeof(length))
             return false;
@@ -162,8 +162,8 @@ static bool parse_option_template(buffer& buf, data_template& result,
         if (length == 0)
             return false;
 
-        uint32_t type_u32 = static_cast<uint32_t>(type) | NF9_FIELDMASK_DATA;
-        result.fields.emplace_back(type_u32, length);
+        nf9_field field_type = NF9_DATA_FIELD(type);
+        result.fields.emplace_back(field_type, length);
         result.total_length += length;
         if (option_length < sizeof(type) + sizeof(length))
             return false;
@@ -178,6 +178,7 @@ static bool parse_option_template_flowset(buffer& buf, nf9_state& state,
                                           uint32_t source_id,
                                           nf9_parse_result& result)
 {
+    // TODO: Consider parsing flowsets with multiple option templates
     option_template_header header;
     if (!buf.get(&header, sizeof(header)))
         return false;

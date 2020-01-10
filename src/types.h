@@ -16,7 +16,7 @@ struct nf9_stats
     int missing_template_errors = 0;
 };
 
-using template_field = std::pair<uint32_t, int>;
+using template_field = std::pair<nf9_field, int>;
 using flow = std::unordered_map<int, std::vector<uint8_t>>;
 
 struct data_template
