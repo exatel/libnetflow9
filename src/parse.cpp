@@ -99,7 +99,7 @@ static bool parse_data_template(buffer& buf, data_template& result)
     if (!parse_template_field(buf, type, length))
         return false;
 
-    result.fields.emplace_back(type, length);
+    result.fields.emplace_back(NF9_DATA_FIELD(type), length);
     result.total_length += length;
 
     return true;
