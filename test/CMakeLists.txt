@@ -1,20 +1,38 @@
 cmake_minimum_required(VERSION 3.7)
-set(COVERAGE OFF CACHE BOOL "Coverage")
 
 enable_testing()
-find_package(GTest)
-include_directories(${GTEST_INCLUDE_DIRS})
-include_directories(../include)
-include_directories(../src)
+find_package(GTest REQUIRED)
 
-if(UNIX AND NOT APPLE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -rdynamic -Wl,--no-as-needed -ldl")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread -rdynamic -Wl,-soname -ldl")
+# Find libtins
+find_package(PkgConfig)
+if (PKG_CONFIG_FOUND)
+  pkg_check_modules(LIBTINS REQUIRED libtins)
+else()
+  set(LIBTINS_LIBRARIES "tins")
 endif()
 
 file(GLOB src *.cpp)
 add_executable(netflowtests ${src})
-
 add_test(netflowtests netflowtests)
-target_link_libraries(netflowtests netflow9 gtest gtest_main pthread tins)
-add_test(NAME runUnitTests COMMAND netflowtests)
+
+target_link_directories(netflowtests PRIVATE
+  ${LIBTINS_LIBRARY_DIRS}
+  )
+target_include_directories(netflowtests PRIVATE
+  "../include"
+  "../src"
+  "${GTEST_INCLUDE_DIRS}"
+  "${LIBTINS_INCLUDE_DIRS}"
+  )
+target_link_libraries(netflowtests
+  netflow9
+  gcov
+  GTest::GTest
+  GTest::Main
+  "${LIBTINS_LIBRARIES}"
+  )
+target_compile_options(netflowtests PRIVATE
+  "-ggdb"
+  "-fprofile-arcs"
+  "-ftest-coverage"
+  )
