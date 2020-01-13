@@ -3,6 +3,7 @@ project(libnetflow CXX)
 
 set(NF9_MAKE_SHARED ON)
 set(NF9_BUILD_TESTS ON)
+option(NF9_FUZZ "Enable fuzzing with LLVM fuzzer" OFF)
 
 if (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
@@ -54,4 +55,8 @@ install(TARGETS netflow9
 
 if (NF9_BUILD_TESTS)
   add_subdirectory(test)
+endif ()
+
+if (NF9_FUZZ)
+  add_subdirectory(fuzz)
 endif ()
