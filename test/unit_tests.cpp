@@ -26,12 +26,10 @@ TEST_F(test, templates_exceptions)
 TEST_F(test, add_option_template_data)
 {
     const int template_id = 1000;
-    const int NF9_SCOPE_FIELD_SYSTEM =
-        1;  // temporary value because there is no enum for option scope fields
     std::vector<uint8_t> packet;
     packet = netflow_packet_builder()
                  .add_option_template_flowset(template_id)
-                 .add_option_scope_field(NF9_SCOPE_FIELD_SYSTEM, 4)
+                 .add_option_scope_field(NF9_SCOPE_FIELD_SYSTEM & 0xffff, 4)
                  .add_option_field(NF9_FIELD_Ingress_VRFID, 4)
                  .build();
     nf9_addr addr = make_inet_addr("192.192.192.193");
@@ -51,12 +49,18 @@ TEST_F(test, add_option_template_data)
     ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
     ASSERT_EQ(nf9_get_num_flows(result.get(), 0), 1);
 
-    // TODO: Uncomment when option parsing is implemented
-    // nf9_value system =
-    //     nf9_get_field(result.get(), 0, 0, NF9_SCOPE_FIELD_SYSTEM);
-    // nf9_value vrf = nf9_get_field(result.get(), 0, 0,
-    // NF9_FIELD_Ingress_VRFID); ASSERT_EQ(system.u32, 1000000);
-    // ASSERT_EQ(vrf.u32, 2000000);
+    uint32_t system, vrf;
+    size_t len = 4;
+    ASSERT_EQ(nf9_get_field(result.get(), 0, 0, NF9_SCOPE_FIELD_SYSTEM, &system,
+                            &len),
+              0);
+    ASSERT_EQ(len, 4);
+    ASSERT_EQ(
+        nf9_get_field(result.get(), 0, 0, NF9_FIELD_Ingress_VRFID, &vrf, &len),
+        0);
+    ASSERT_EQ(len, 4);
+    EXPECT_EQ(system, 1000000);
+    EXPECT_EQ(vrf, 2000000);
 }
 
 TEST_F(test, packet_too_short)
