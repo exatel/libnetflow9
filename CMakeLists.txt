@@ -7,6 +7,8 @@ option(NF9_FUZZ "Enable fuzzing with LLVM fuzzer" OFF)
 option(NF9_BUILD_BENCHMARK
   "If set, build benchmarks (requires google benchmark library)" OFF)
 
+include(CheckCXXCompilerFlag)
+
 if (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 endif()
@@ -31,23 +33,28 @@ target_compile_features(netflow9 PUBLIC cxx_std_17)
 if (MSVC)
   message(FATAL_ERROR "MSVC support not implemented!")
 else ()
-  target_compile_options(netflow9 PRIVATE
-    "-Wall"
-    "-Wextra"
-    "-Wpedantic"
-    "-Wno-unused-parameter"
-    "-Wno-register"
-    "-Wno-implicit-fallthrough"
-    "-Wduplicated-cond"
-    "-Wduplicated-branches"
-    "-Wrestrict"
-    "-Wnull-dereference"
-    "-Wold-style-cast"
-    "-Wuseless-cast"
-    "-Wdouble-promotion"
-    "-Wshadow"
-    "-Wformat=2"
-  )
+  macro(nf9_add_compiler_flag flag)
+    check_cxx_compiler_flag(${flag} flag-${flag})
+    if(flag-${flag})
+      target_compile_options(netflow9 PRIVATE ${flag})
+    endif()
+  endmacro()
+
+  nf9_add_compiler_flag("-Wall")
+  nf9_add_compiler_flag("-Wextra")
+  nf9_add_compiler_flag("-Wpedantic")
+  nf9_add_compiler_flag("-Wno-unused-parameter")
+  nf9_add_compiler_flag("-Wno-register")
+  nf9_add_compiler_flag("-Wno-implicit-fallthrough")
+  nf9_add_compiler_flag("-Wduplicated-cond")
+  nf9_add_compiler_flag("-Wduplicated-branches")
+  nf9_add_compiler_flag("-Wrestrict")
+  nf9_add_compiler_flag("-Wnull-dereference")
+  nf9_add_compiler_flag("-Wold-style-cast")
+  nf9_add_compiler_flag("-Wuseless-cast")
+  nf9_add_compiler_flag("-Wdouble-promotion")
+  nf9_add_compiler_flag("-Wshadow")
+  nf9_add_compiler_flag("-Wformat=2")
 endif ()
 
 install(TARGETS netflow9
