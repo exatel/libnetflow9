@@ -37,7 +37,7 @@ typedef union nf9_addr {
 NF9_API int nf9_parse(nf9_state* state, nf9_parse_result** result,
                       const uint8_t* buf, size_t len, const nf9_addr* addr);
 
-NF9_API void nf9_free_parse_result(nf9_parse_result* result);
+NF9_API void nf9_free_parse_result(const nf9_parse_result* result);
 
 typedef uint32_t nf9_field;
 

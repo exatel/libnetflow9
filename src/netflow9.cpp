@@ -69,7 +69,7 @@ int nf9_get_field(const nf9_parse_result* pr, int flowset, int flownum,
     return 0;
 }
 
-void nf9_free_parse_result(nf9_parse_result* pr)
+void nf9_free_parse_result(const nf9_parse_result* pr)
 {
     delete pr;
 }
