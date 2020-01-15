@@ -53,6 +53,15 @@ struct buffer
     }
 };
 
+struct parsing_context
+{
+    buffer& buf;
+    uint32_t source_id;
+    const nf9_addr& srcaddr;
+    nf9_parse_result& result;
+    nf9_state& state;
+};
+
 static nf9_flowset_type get_flowset_type(const flowset_header& header)
 {
     uint16_t id = ntohs(header.flowset_id);
@@ -64,8 +73,8 @@ static nf9_flowset_type get_flowset_type(const flowset_header& header)
     return NF9_FLOWSET_TEMPLATE;
 }
 
-static bool parse_header(buffer& buf, netflow_header& hdr,
-                         nf9_parse_result& result)
+static bool parse_header(buffer& buf, netflow_header& hdr, uint32_t& timestamp,
+                         uint32_t& uptime)
 {
     if (!buf.get(&hdr, sizeof(hdr)))
         return false;
@@ -171,23 +180,20 @@ static bool parse_data_template(buffer& buf, data_template& tmpl,
     return true;
 }
 
-static bool parse_data_template_flowset(buffer& buf, nf9_state& state,
-                                        const nf9_addr& addr,
-                                        uint32_t source_id,
-                                        nf9_parse_result& result)
+static bool parse_data_template_flowset(parsing_context& ctx)
 {
-    while (buf.remaining() > 0) {
+    while (ctx.buf.remaining() > 0) {
         data_template_header header;
-        if (!buf.get(&header, sizeof(header)))
+        if (!ctx.buf.get(&header, sizeof(header)))
             return false;
 
-        flowset& f = result.flowsets.emplace_back(flowset{});
+        flowset& f = ctx.result.flowsets.emplace_back(flowset{});
         f.type = NF9_FLOWSET_TEMPLATE;
         data_template& tmpl = f.dtemplate;
         uint16_t field_count = ntohs(header.field_count);
 
-        while (field_count-- > 0 && buf.remaining() > 0) {
-            if (!parse_data_template(buf, tmpl, result))
+        while (field_count-- > 0 && ctx.buf.remaining() > 0) {
+            if (!parse_data_template(ctx.buf, tmpl, ctx.result))
                 return false;
         }
 
@@ -236,17 +242,14 @@ static bool parse_option_template(buffer& buf, data_template& tmpl,
     return true;
 }
 
-static bool parse_option_template_flowset(buffer& buf, nf9_state& state,
-                                          const nf9_addr& addr,
-                                          uint32_t source_id,
-                                          nf9_parse_result& result)
+static bool parse_option_template_flowset(parsing_context& ctx)
 {
     // TODO: Consider parsing flowsets with multiple option templates
     option_template_header header;
-    if (!buf.get(&header, sizeof(header)))
+    if (!ctx.buf.get(&header, sizeof(header)))
         return false;
 
-    flowset& f = result.flowsets.emplace_back(flowset{});
+    flowset& f = ctx.result.flowsets.emplace_back(flowset{});
     f.type = NF9_FLOWSET_OPTIONS;
     data_template& tmpl = f.dtemplate;
 
@@ -259,7 +262,7 @@ static bool parse_option_template_flowset(buffer& buf, nf9_state& state,
         return false;
 
     // omit padding bytes
-    buf.advance(buf.remaining());
+    ctx.buf.advance(ctx.buf.remaining());
     return true;
 }
 
@@ -297,13 +300,11 @@ static bool parse_flow(buffer& buf, data_template& tmpl, flowset& result)
     return true;
 }
 
-static bool parse_data_flowset(buffer& buf, nf9_state& state,
-                               uint16_t flowset_id, const nf9_addr& srcaddr,
-                               uint32_t source_id, nf9_parse_result& result)
+static bool parse_data_flowset(parsing_context& ctx, uint16_t flowset_id)
 {
-    exporter_stream_id stream_id = {srcaddr, source_id, flowset_id};
+    exporter_stream_id stream_id = {ctx.srcaddr, ctx.source_id, flowset_id};
 
-    flowset& f = result.flowsets.emplace_back(flowset{});
+    flowset& f = ctx.result.flowsets.emplace_back(flowset{});
     f.type = NF9_FLOWSET_DATA;
 
     if (ctx.state.templates.count(stream_id) == 0) {
@@ -312,7 +313,7 @@ static bool parse_data_flowset(buffer& buf, nf9_state& state,
         return true;
     }
 
-    data_template& tmpl = state.templates[stream_id];
+    data_template& tmpl = ctx.state.templates[stream_id];
 
     uint32_t tmpl_lifetime = ctx.result.timestamp - tmpl.timestamp;
 
@@ -323,21 +324,19 @@ static bool parse_data_flowset(buffer& buf, nf9_state& state,
         return true;
     }
 
-    while (buf.remaining() > 0) {
-        if (!parse_flow(buf, tmpl, f))
+    while (ctx.buf.remaining() > 0) {
+        if (!parse_flow(ctx.buf, tmpl, f))
             return false;
     }
 
     return true;
 }
 
-static bool parse_flowset(buffer& buf, uint32_t source_id,
-                          const nf9_addr& srcaddr, nf9_parse_result& result,
-                          nf9_state& state)
+static bool parse_flowset(parsing_context& context)
 {
     flowset_header header;
 
-    if (!buf.get(&header, sizeof(header)))
+    if (!context.buf.get(&header, sizeof(header)))
         return false;
 
     size_t flowset_length = ntohs(header.length);
@@ -349,26 +348,27 @@ static bool parse_flowset(buffer& buf, uint32_t source_id,
         return false;
 
     flowset_length -= sizeof(header);
-    if (flowset_length > buf.remaining())
+    if (flowset_length > context.buf.remaining())
         return false;
 
-    buffer tmpbuf{buf.ptr, flowset_length, buf.ptr};
-    buf.advance(flowset_length);
+    buffer tmpbuf{context.buf.ptr, flowset_length, context.buf.ptr};
+    context.buf.advance(flowset_length);
+
+    parsing_context ctx = {tmpbuf, context.source_id, context.srcaddr,
+                           context.result, context.state};
 
     switch (get_flowset_type(header)) {
         case NF9_FLOWSET_TEMPLATE:
             context.state.stats.data_templates++;
             return parse_data_template_flowset(ctx);
         case NF9_FLOWSET_OPTIONS:
-            state.stats.option_templates++;
-            return parse_option_template_flowset(tmpbuf, state, srcaddr,
-                                                 source_id, result);
+            context.state.stats.option_templates++;
+            return parse_option_template_flowset(ctx);
         case NF9_FLOWSET_DATA:
-            state.stats.records++;
-            return parse_data_flowset(tmpbuf, state, ntohs(header.flowset_id),
-                                      srcaddr, source_id, result);
+            context.state.stats.records++;
+            return parse_data_flowset(ctx, ntohs(header.flowset_id));
         default:
-            state.stats.malformed_packets++;
+            context.state.stats.malformed_packets++;
             return false;
     }
 
@@ -382,13 +382,15 @@ bool parse(const uint8_t* data, size_t len, const nf9_addr& srcaddr,
     buffer buf{data, len, data};
     netflow_header header;
 
-    if (!parse_header(buf, header, *result))
+    if (!parse_header(buf, header, result->timestamp, result->system_uptime))
         return false;
 
+    parsing_context context = {buf, ntohl(header.source_id), srcaddr, *result,
+                               *state};
+
     size_t num_flowsets = ntohs(header.count);
-    for (size_t i = 0; i < num_flowsets && buf.remaining() > 0; i++) {
-        if (!parse_flowset(buf, ntohl(header.source_id), srcaddr, *result,
-                           *state))
+    for (size_t i = 0; i < num_flowsets && buf.remaining() > 0; ++i) {
+        if (!parse_flowset(context))
             return false;
     }
 
