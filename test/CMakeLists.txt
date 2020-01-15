@@ -9,8 +9,8 @@ file(GLOB src *.cpp)
 add_executable(netflowtests ${src})
 add_test(netflowtests netflowtests)
 
+target_compile_features(netflowtests PRIVATE cxx_std_17)
 target_include_directories(netflowtests PRIVATE
-  "../include"
   "../src"
   "${GTEST_INCLUDE_DIRS}"
   )

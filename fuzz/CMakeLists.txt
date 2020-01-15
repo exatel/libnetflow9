@@ -7,8 +7,8 @@ endif()
 file(GLOB src *.cpp)
 add_executable(netflowfuzz ${src})
 
+target_compile_features(netflowfuzz PRIVATE cxx_std_17)
 target_include_directories(netflowfuzz PRIVATE
-  "../include"
   "../src"
   )
 target_link_libraries(netflowfuzz netflow9)

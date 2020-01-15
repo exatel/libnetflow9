@@ -28,7 +28,7 @@ else ()
 endif ()
 
 target_include_directories(netflow9 SYSTEM PUBLIC include)
-target_compile_features(netflow9 PUBLIC cxx_std_17)
+target_compile_features(netflow9 PRIVATE cxx_std_17)
 
 if (MSVC)
   message(FATAL_ERROR "MSVC support not implemented!")

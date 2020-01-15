@@ -5,6 +5,7 @@ add_executable(netflow-benchmark ${src})
 
 find_package(benchmark REQUIRED)
 
+target_compile_features(netflow-benchmark PRIVATE cxx_std_17)
 target_link_libraries(netflow-benchmark netflow9 benchmark::benchmark_main)
 target_include_directories(netflow-benchmark PRIVATE
   "${PROJECT_SOURCE_DIR}/src"
