@@ -25,7 +25,7 @@ else ()
   add_library(netflow9 STATIC ${CXX_SRC})
 endif ()
 
-target_include_directories(netflow9 PUBLIC include)
+target_include_directories(netflow9 SYSTEM PUBLIC include)
 target_compile_features(netflow9 PUBLIC cxx_std_17)
 
 if (MSVC)
