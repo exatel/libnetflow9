@@ -28,6 +28,9 @@ NF9_API void nf9_free(nf9_state* state);
 
 typedef struct nf9_parse_result nf9_parse_result;
 
+#define NF9_MAX_TEMPLATES 10000
+#define NF9_TEMPLATE_EXPIRE_TIME (15 * 60)
+
 typedef union nf9_addr {
     sa_family_t family;
     struct sockaddr_in in;

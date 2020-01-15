@@ -23,11 +23,14 @@ struct data_template
 {
     std::vector<template_field> fields;
     size_t total_length;
+    uint32_t timestamp;
 };
 
-/* Objects of this type uniquely identify flow streams across all
+/*
+ * Objects of this type uniquely identify flow streams across all
  * exporter devices by using a combination of the exporter source IP
- * address, the source_id field in the Netflow header, and template id. */
+ * address, the source_id field in the Netflow header, and template id.
+ */
 struct exporter_stream_id
 {
     nf9_addr addr;
@@ -51,6 +54,9 @@ struct nf9_state
     int flags;
     nf9_stats stats;
 
+    /* Counter of bytes alocated in templates unordered_map */
+    size_t used_bytes = 0;
+
     std::unordered_map<exporter_stream_id, data_template> templates;
 };
 
@@ -70,6 +76,8 @@ struct nf9_parse_result
 {
     std::vector<flowset> flowsets;
     nf9_addr addr;
+    uint32_t system_uptime;
+    uint32_t timestamp;
 };
 
 struct netflow_header

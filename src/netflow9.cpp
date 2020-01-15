@@ -151,6 +151,5 @@ bool operator==(const exporter_stream_id& lhs,
                           sizeof(lhs.addr.in6.sin6_addr)) == 0 &&
                    lhs.addr.in6.sin6_port == rhs.addr.in6.sin6_port;
     }
-
     return true;
 }

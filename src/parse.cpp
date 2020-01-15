@@ -64,13 +64,77 @@ static nf9_flowset_type get_flowset_type(const flowset_header& header)
     return NF9_FLOWSET_TEMPLATE;
 }
 
-static bool parse_header(buffer& buf, netflow_header& hdr)
+static bool parse_header(buffer& buf, netflow_header& hdr,
+                         nf9_parse_result& result)
 {
     if (!buf.get(&hdr, sizeof(hdr)))
         return false;
 
     if (ntohs(hdr.version) != 9)
         return false;
+
+    timestamp = ntohl(hdr.timestamp);
+    uptime = ntohl(hdr.uptime);
+
+    return true;
+}
+
+static size_t get_template_size(const data_template& tmpl)
+{
+    size_t tmpl_size =
+        sizeof(data_template) + tmpl.fields.size() * sizeof(template_field);
+    return tmpl_size;
+}
+
+static int delete_expired_templates(uint32_t timestamp, nf9_state& state)
+{
+    int deleted_templates = 0;
+    uint32_t expiration_timestamp = timestamp - state.template_expire_time;
+    for (auto& element : state.templates) {
+        if (element.second.timestamp <= expiration_timestamp) {
+            ++deleted_templates;
+            ++state.stats.expired_templates;
+            state.used_bytes -= get_template_size(element.second);
+            state.templates.erase(element.first);
+        }
+    }
+    return deleted_templates;
+}
+
+static bool save_template(data_template& tmpl, parsing_context& ctx,
+                          uint16_t tid)
+{
+    if (tmpl.total_length == 0)
+        return false;
+
+    size_t bytes_to_allocate = get_template_size(tmpl);
+
+    if (ctx.state.used_bytes + bytes_to_allocate >=
+        ctx.state.max_template_data) {
+        int deleted = delete_expired_templates(ctx.result.timestamp, ctx.state);
+        if (deleted == 0)
+            return false;
+        else if (ctx.state.used_bytes + bytes_to_allocate >=
+                 ctx.state.max_template_data)
+            return false;
+    }
+
+    exporter_stream_id stream_id = {ctx.srcaddr, ctx.source_id, ntohs(tid)};
+    if (ctx.state.templates.count(stream_id) != 0) {
+        if (tmpl.timestamp >= ctx.state.templates[stream_id].timestamp) {
+            ctx.state.used_bytes -=
+                sizeof(ctx.state.templates[stream_id]) +
+                ctx.state.templates[stream_id].fields.size() *
+                    sizeof(template_field);
+        }
+        else {
+            return true;
+        }
+    }
+    ctx.state.templates[stream_id] = tmpl;
+
+    /* Increment counter of bytes allocated by templates */
+    ctx.state.used_bytes += bytes_to_allocate;
 
     return true;
 }
@@ -91,7 +155,8 @@ static bool parse_template_field(buffer& buf, uint16_t& type, uint16_t& length)
     return true;
 }
 
-static bool parse_data_template(buffer& buf, data_template& result)
+static bool parse_data_template(buffer& buf, data_template& tmpl,
+                                nf9_parse_result& result)
 {
     uint16_t type;
     uint16_t length;
@@ -99,8 +164,9 @@ static bool parse_data_template(buffer& buf, data_template& result)
     if (!parse_template_field(buf, type, length))
         return false;
 
-    result.fields.emplace_back(NF9_DATA_FIELD(type), length);
-    result.total_length += length;
+    tmpl.fields.emplace_back(NF9_DATA_FIELD(type), length);
+    tmpl.total_length += length;
+    tmpl.timestamp = result.timestamp;
 
     return true;
 }
@@ -121,23 +187,19 @@ static bool parse_data_template_flowset(buffer& buf, nf9_state& state,
         uint16_t field_count = ntohs(header.field_count);
 
         while (field_count-- > 0 && buf.remaining() > 0) {
-            if (!parse_data_template(buf, tmpl))
+            if (!parse_data_template(buf, tmpl, result))
                 return false;
         }
 
-        if (tmpl.total_length == 0)
+        if (!save_template(tmpl, ctx, header.template_id))
             return false;
-
-        exporter_stream_id stream_id = {addr, source_id,
-                                        ntohs(header.template_id)};
-        state.templates[stream_id] = tmpl;
     }
     return true;
 }
 
-static bool parse_option_template(buffer& buf, data_template& result,
+static bool parse_option_template(buffer& buf, data_template& tmpl,
                                   uint16_t option_scope_length,
-                                  uint16_t option_length)
+                                  uint16_t option_length, uint32_t timestamp)
 {
     uint16_t type;
     uint16_t length;
@@ -149,8 +211,8 @@ static bool parse_option_template(buffer& buf, data_template& result,
             return false;
 
         nf9_field field_type = NF9_SCOPE_FIELD(type);
-        result.fields.emplace_back(field_type, length);
-        result.total_length += length;
+        tmpl.fields.emplace_back(field_type, length);
+        tmpl.total_length += length;
         if (option_scope_length < sizeof(type) + sizeof(length))
             return false;
         option_scope_length -= sizeof(type) + sizeof(length);
@@ -163,12 +225,13 @@ static bool parse_option_template(buffer& buf, data_template& result,
             return false;
 
         nf9_field field_type = NF9_DATA_FIELD(type);
-        result.fields.emplace_back(field_type, length);
-        result.total_length += length;
+        tmpl.fields.emplace_back(field_type, length);
+        tmpl.total_length += length;
         if (option_length < sizeof(type) + sizeof(length))
             return false;
         option_length -= sizeof(type) + sizeof(length);
     }
+    tmpl.timestamp = timestamp;
 
     return true;
 }
@@ -187,15 +250,13 @@ static bool parse_option_template_flowset(buffer& buf, nf9_state& state,
     f.type = NF9_FLOWSET_OPTIONS;
     data_template& tmpl = f.dtemplate;
 
-    if (!parse_option_template(buf, tmpl, ntohs(header.option_scope_length),
-                               ntohs(header.option_length)))
+    if (!parse_option_template(ctx.buf, tmpl, ntohs(header.option_scope_length),
+                               ntohs(header.option_length),
+                               ctx.result.timestamp))
         return false;
 
-    if (tmpl.total_length == 0)
+    if (!save_template(tmpl, ctx, header.template_id))
         return false;
-
-    exporter_stream_id stream_id = {addr, source_id, ntohs(header.template_id)};
-    state.templates[stream_id] = tmpl;
 
     // omit padding bytes
     buf.advance(buf.remaining());
@@ -245,13 +306,23 @@ static bool parse_data_flowset(buffer& buf, nf9_state& state,
     flowset& f = result.flowsets.emplace_back(flowset{});
     f.type = NF9_FLOWSET_DATA;
 
-    if (state.templates.count(stream_id) == 0) {
-        state.stats.missing_template_errors++;
-        buf.advance(buf.remaining());
+    if (ctx.state.templates.count(stream_id) == 0) {
+        ++ctx.state.stats.missing_template_errors;
+        ctx.buf.advance(ctx.buf.remaining());
         return true;
     }
 
     data_template& tmpl = state.templates[stream_id];
+
+    uint32_t tmpl_lifetime = ctx.result.timestamp - tmpl.timestamp;
+
+    if (tmpl_lifetime > ctx.state.template_expire_time) {
+        ++ctx.state.stats.expired_templates;
+        ctx.state.templates.erase(stream_id);
+        ctx.buf.advance(ctx.buf.remaining());
+        return true;
+    }
+
     while (buf.remaining() > 0) {
         if (!parse_flow(buf, tmpl, f))
             return false;
@@ -286,16 +357,12 @@ static bool parse_flowset(buffer& buf, uint32_t source_id,
 
     switch (get_flowset_type(header)) {
         case NF9_FLOWSET_TEMPLATE:
-            state.stats.templates++;
-            return parse_data_template_flowset(tmpbuf, state, srcaddr,
-                                               source_id, result);
-
+            context.state.stats.data_templates++;
+            return parse_data_template_flowset(ctx);
         case NF9_FLOWSET_OPTIONS:
             state.stats.option_templates++;
             return parse_option_template_flowset(tmpbuf, state, srcaddr,
                                                  source_id, result);
-            return true;
-
         case NF9_FLOWSET_DATA:
             state.stats.records++;
             return parse_data_flowset(tmpbuf, state, ntohs(header.flowset_id),
@@ -315,7 +382,7 @@ bool parse(const uint8_t* data, size_t len, const nf9_addr& srcaddr,
     buffer buf{data, len, data};
     netflow_header header;
 
-    if (!parse_header(buf, header))
+    if (!parse_header(buf, header, *result))
         return false;
 
     size_t num_flowsets = ntohs(header.count);
