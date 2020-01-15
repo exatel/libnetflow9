@@ -11,9 +11,10 @@ struct nf9_stats
     int processed_packets = 0;
     int malformed_packets = 0;
     int records = 0;
-    int templates = 0;
+    int data_templates = 0;
     int option_templates = 0;
     int missing_template_errors = 0;
+    int expired_templates = 0;
 };
 
 using template_field = std::pair<nf9_field, int>;
@@ -49,10 +50,15 @@ struct hash<exporter_stream_id>
 
 bool operator==(const exporter_stream_id&, const exporter_stream_id&) noexcept;
 
+static const size_t MAX_TEMPLATE_DATA = 10000;
+static const uint32_t TEMPLATE_EXPIRE_TIME = 15 * 60;
+
 struct nf9_state
 {
     int flags;
     nf9_stats stats;
+    size_t max_template_data = MAX_TEMPLATE_DATA;
+    uint32_t template_expire_time = TEMPLATE_EXPIRE_TIME;
 
     /* Counter of bytes alocated in templates unordered_map */
     size_t used_bytes = 0;

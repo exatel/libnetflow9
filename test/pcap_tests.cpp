@@ -63,7 +63,7 @@ TEST_F(pcap_test, basic_stats_test)
     stats st = get_stats();
 
     EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_TOTAL_RECORDS), 4);
-    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_TOTAL_TEMPLATES), 2);
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_TOTAL_DATA_TEMPLATES), 2);
     EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_TOTAL_OPTION_TEMPLATES), 2);
     EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MISSING_TEMPLATE_ERRORS), 0);
     EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 0);

@@ -28,9 +28,6 @@ NF9_API void nf9_free(nf9_state* state);
 
 typedef struct nf9_parse_result nf9_parse_result;
 
-#define NF9_MAX_TEMPLATES 10000
-#define NF9_TEMPLATE_EXPIRE_TIME (15 * 60)
-
 typedef union nf9_addr {
     sa_family_t family;
     struct sockaddr_in in;
@@ -318,15 +315,22 @@ enum nf9_stat_fields {
     NF9_STAT_PROCESSED_PACKETS,
     NF9_STAT_MALFORMED_PACKETS,
     NF9_STAT_TOTAL_RECORDS,
-    NF9_STAT_TOTAL_TEMPLATES,
+    NF9_STAT_TOTAL_DATA_TEMPLATES,
     NF9_STAT_TOTAL_OPTION_TEMPLATES,
     NF9_STAT_MISSING_TEMPLATE_ERRORS,
+    NF9_STAT_EXPIRED_TEMPLATES,
+};
+
+enum nf9_opt {
+    NF9_OPT_MAX_MEM_USAGE,
+    NF9_OPT_TEMPLATE_EXPIRE_TIME,
 };
 
 typedef struct nf9_stats nf9_stats;
 NF9_API const nf9_stats* nf9_get_stats(const nf9_state* state);
 NF9_API int nf9_get_stat(const nf9_stats* stats, int stat);
 NF9_API void nf9_free_stats(const nf9_stats*);
+NF9_API int nf9_set_option(nf9_state* state, nf9_opt opt, long value);
 
 #ifdef __cplusplus
 }

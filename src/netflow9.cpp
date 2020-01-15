@@ -7,7 +7,7 @@
 
 nf9_state* nf9_init(int flags)
 {
-    nf9_state* st = new nf9_state;
+    nf9_state* st = new nf9_state();
     st->flags = flags;
     return st;
 }
@@ -86,14 +86,16 @@ int nf9_get_stat(const nf9_stats* stats, int stat)
     switch (stat) {
         case NF9_STAT_TOTAL_RECORDS:
             return stats->records;
-        case NF9_STAT_TOTAL_TEMPLATES:
-            return stats->templates;
+        case NF9_STAT_TOTAL_DATA_TEMPLATES:
+            return stats->data_templates;
         case NF9_STAT_TOTAL_OPTION_TEMPLATES:
             return stats->option_templates;
         case NF9_STAT_MALFORMED_PACKETS:
             return stats->malformed_packets;
         case NF9_STAT_MISSING_TEMPLATE_ERRORS:
             return stats->missing_template_errors;
+        case NF9_STAT_EXPIRED_TEMPLATES:
+            return stats->expired_templates;
     }
     return 0;
 }
@@ -101,6 +103,29 @@ int nf9_get_stat(const nf9_stats* stats, int stat)
 void nf9_free_stats(const nf9_stats* stats)
 {
     delete stats;
+}
+
+int nf9_set_option(nf9_state* state, nf9_opt opt, long value)
+{
+    switch (opt) {
+        case NF9_OPT_MAX_MEM_USAGE:
+            if (value > 0) {
+                state->max_template_data = static_cast<size_t>(value);
+                return 0;
+            }
+            else {
+                return 1;
+            }
+        case NF9_OPT_TEMPLATE_EXPIRE_TIME:
+            if (value > 0) {
+                state->template_expire_time = static_cast<uint32_t>(value);
+                return 0;
+            }
+            else {
+                return 1;
+            }
+    }
+    return 1;
 }
 
 size_t std::hash<exporter_stream_id>::operator()(
