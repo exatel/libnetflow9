@@ -156,7 +156,7 @@ TEST_F(test, detects_missing_templates)
     ASSERT_NE(result, nullptr);
 
     stats st = get_stats();
-    ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
+    ASSERT_EQ(nf9_get_num_flowsets(result.get()), 0);
     ASSERT_EQ(nf9_get_stat(st.get(), NF9_STAT_MISSING_TEMPLATE_ERRORS), 1);
 }
 
@@ -175,19 +175,6 @@ TEST_F(test, recognizes_template_flowsets)
     ASSERT_NE(result, nullptr);
     ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
     ASSERT_EQ(nf9_get_flowset_type(result.get(), 0), NF9_FLOWSET_TEMPLATE);
-}
-
-TEST_F(test, recognizes_data_flowsets)
-{
-    std::vector<uint8_t> packet =
-        netflow_packet_builder().add_data_flowset(444).build();
-
-    nf9_addr addr = make_inet_addr("192.168.0.123");
-    parse_result result = parse(packet.data(), packet.size(), &addr);
-    ASSERT_NE(result, nullptr);
-
-    ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
-    ASSERT_EQ(nf9_get_flowset_type(result.get(), 0), NF9_FLOWSET_DATA);
 }
 
 TEST_F(test, recognizes_option_flowsets)
@@ -357,6 +344,80 @@ TEST_F(test, matching_template_per_source_id)
 
     stats st = get_stats();
     ASSERT_EQ(nf9_get_stat(st.get(), NF9_STAT_MISSING_TEMPLATE_ERRORS), 1);
+}
+
+TEST_F(test, data_templates_expiration)
+{
+    nf9_addr addr = make_inet_addr("192.168.0.123");
+    std::vector<uint8_t> packet;
+    parse_result result;
+
+    packet = netflow_packet_builder()
+                 .add_data_template_flowset(0)
+                 .add_data_template(256)
+                 .add_data_template_field(NF9_FIELD_IPV4_SRC_ADDR, 4)
+                 .add_data_template_field(NF9_FIELD_IPV4_DST_ADDR, 4)
+                 .set_unix_timestamp(100)
+                 .build();
+    result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_NE(result, nullptr);
+    ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
+    ASSERT_EQ(nf9_get_flowset_type(result.get(), 0), NF9_FLOWSET_TEMPLATE);
+
+    // Now, attempt to parse data flowset in previous template format.
+    packet = netflow_packet_builder()
+                 .add_data_flowset(256)
+                 .add_data_field(uint32_t(875770417))  // SRC = 1.2.3.4
+                 .add_data_field(uint32_t(943142453))  // DST = 5.6.7.8
+                 .build();
+    result = parse(packet.data(), packet.size(), &addr);
+    stats st = get_stats();
+    ASSERT_EQ(nf9_get_stat(st.get(), NF9_STAT_EXPIRED_TEMPLATES), 1);
+}
+
+TEST_F(test, data_template_with_lower_timestamp)
+{
+    std::vector<uint8_t> packet =
+        netflow_packet_builder()
+            .add_data_template_flowset(0)
+            .add_data_template(256)
+            .add_data_template_field(NF9_FIELD_IPV4_SRC_ADDR, 4)
+            .build();
+
+    nf9_addr addr = make_inet_addr("192.168.0.123");
+    parse_result result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_NE(result, nullptr);
+
+    packet = netflow_packet_builder()
+                 .add_data_template_flowset(0)
+                 .add_data_template(256)
+                 .add_data_template_field(NF9_FIELD_IPV4_DST_ADDR, 4)
+                 .set_unix_timestamp(100)
+                 .build();
+
+    result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_NE(result, nullptr);
+
+    EXPECT_EQ(state_->templates.size(), 1);
+
+    packet = netflow_packet_builder()
+                 .add_data_flowset(256)
+                 .add_data_field(uint32_t(875770417))  // SRC = 1.2.3.4
+                 .build();
+    result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_NE(result, nullptr);
+    ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
+    ASSERT_EQ(nf9_get_num_flows(result.get(), 0), 1);
+    ASSERT_EQ(nf9_get_flowset_type(result.get(), 0), NF9_FLOWSET_DATA);
+    uint32_t src, dst;
+    size_t len = sizeof(uint32_t);
+    ASSERT_EQ(
+        nf9_get_field(result.get(), 0, 0, NF9_FIELD_IPV4_SRC_ADDR, &src, &len),
+        0);
+    ASSERT_EQ(
+        nf9_get_field(result.get(), 0, 0, NF9_FIELD_IPV4_DST_ADDR, &dst, &len),
+        1);
+    ASSERT_EQ(src, 875770417);
 }
 
 TEST_F(test, detects_too_large_field_length_in_data_flowset)

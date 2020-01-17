@@ -187,7 +187,7 @@ static bool parse_data_template_flowset(parsing_context& ctx)
         if (!ctx.buf.get(&header, sizeof(header)))
             return false;
 
-        flowset& f = ctx.result.flowsets.emplace_back(flowset{});
+        flowset f = flowset();
         f.type = NF9_FLOWSET_TEMPLATE;
         data_template& tmpl = f.dtemplate;
         uint16_t field_count = ntohs(header.field_count);
@@ -199,6 +199,8 @@ static bool parse_data_template_flowset(parsing_context& ctx)
 
         if (!save_template(tmpl, ctx, header.template_id))
             return false;
+
+        ctx.result.flowsets.emplace_back(std::move(f));
     }
     return true;
 }
@@ -249,7 +251,7 @@ static bool parse_option_template_flowset(parsing_context& ctx)
     if (!ctx.buf.get(&header, sizeof(header)))
         return false;
 
-    flowset& f = ctx.result.flowsets.emplace_back(flowset{});
+    flowset f = flowset();
     f.type = NF9_FLOWSET_OPTIONS;
     data_template& tmpl = f.dtemplate;
 
@@ -260,6 +262,8 @@ static bool parse_option_template_flowset(parsing_context& ctx)
 
     if (!save_template(tmpl, ctx, header.template_id))
         return false;
+
+    ctx.result.flowsets.emplace_back(std::move(f));
 
     // omit padding bytes
     ctx.buf.advance(ctx.buf.remaining());
@@ -278,8 +282,7 @@ static bool parse_flow(buffer& buf, data_template& tmpl, flowset& result)
         return true;
     }
 
-    result.flows.emplace_back();
-    flow& f = result.flows.back();
+    flow f = flow();
 
     for (const template_field& tf : tmpl.fields) {
         uint32_t type = tf.first;
@@ -297,6 +300,8 @@ static bool parse_flow(buffer& buf, data_template& tmpl, flowset& result)
         f[type] = field_value;
     }
 
+    result.flows.emplace_back(std::move(f));
+
     return true;
 }
 
@@ -304,7 +309,7 @@ static bool parse_data_flowset(parsing_context& ctx, uint16_t flowset_id)
 {
     exporter_stream_id stream_id = {ctx.srcaddr, ctx.source_id, flowset_id};
 
-    flowset& f = ctx.result.flowsets.emplace_back(flowset{});
+    flowset f = flowset();
     f.type = NF9_FLOWSET_DATA;
 
     if (ctx.state.templates.count(stream_id) == 0) {
@@ -328,6 +333,8 @@ static bool parse_data_flowset(parsing_context& ctx, uint16_t flowset_id)
         if (!parse_flow(ctx.buf, tmpl, f))
             return false;
     }
+
+    ctx.result.flowsets.emplace_back(std::move(f));
 
     return true;
 }
