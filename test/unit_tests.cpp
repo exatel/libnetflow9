@@ -382,17 +382,20 @@ TEST_F(test, data_template_with_lower_timestamp)
             .add_data_template_flowset(0)
             .add_data_template(256)
             .add_data_template_field(NF9_FIELD_IPV4_SRC_ADDR, 4)
+            .set_unix_timestamp(5000)
             .build();
 
     nf9_addr addr = make_inet_addr("192.168.0.123");
     parse_result result = parse(packet.data(), packet.size(), &addr);
     ASSERT_NE(result, nullptr);
 
+    ASSERT_EQ(nf9_set_option(state_, NF9_OPT_TEMPLATE_EXPIRE_TIME, 1000), 0);
+
     packet = netflow_packet_builder()
                  .add_data_template_flowset(0)
                  .add_data_template(256)
                  .add_data_template_field(NF9_FIELD_IPV4_DST_ADDR, 4)
-                 .set_unix_timestamp(100)
+                 .set_unix_timestamp(1000)
                  .build();
 
     result = parse(packet.data(), packet.size(), &addr);
@@ -403,6 +406,7 @@ TEST_F(test, data_template_with_lower_timestamp)
     packet = netflow_packet_builder()
                  .add_data_flowset(256)
                  .add_data_field(uint32_t(875770417))  // SRC = 1.2.3.4
+                 .set_unix_timestamp(5000)
                  .build();
     result = parse(packet.data(), packet.size(), &addr);
     ASSERT_NE(result, nullptr);
@@ -418,6 +422,50 @@ TEST_F(test, data_template_with_lower_timestamp)
         nf9_get_field(result.get(), 0, 0, NF9_FIELD_IPV4_DST_ADDR, &dst, &len),
         1);
     ASSERT_EQ(src, 875770417);
+}
+
+TEST_F(test, try_to_add_too_many_templates)
+{
+    nf9_addr addr = make_inet_addr("169.254.0.1");
+    std::vector<uint8_t> packet;
+    parse_result result;
+    packet = netflow_packet_builder()
+                 .add_data_template_flowset(200)
+                 .add_data_template(400)
+                 .add_data_template_field(NF9_FIELD_IPV4_SRC_ADDR, 4)
+                 .add_data_template(401)
+                 .add_data_template_field(NF9_FIELD_IPV4_DST_ADDR, 4)
+                 .set_unix_timestamp(10000)
+                 .build();
+
+    result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(state_->templates.size(), 2);
+    stats st = get_stats();
+    int memory_used = nf9_get_stat(st.get(), NF9_STAT_MEMORY_USAGE);
+    ASSERT_EQ(nf9_set_option(state_, NF9_OPT_MAX_MEM_USAGE, memory_used), 0);
+
+    packet = netflow_packet_builder()
+                 .add_data_template_flowset(201)
+                 .add_data_template(257)
+                 .add_data_template_field(NF9_FIELD_IPV4_SRC_ADDR, 4)
+                 .set_unix_timestamp(10000)
+                 .build();
+
+    result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_EQ(result, nullptr);
+    EXPECT_EQ(state_->templates.size(), 2);
+
+    packet = netflow_packet_builder()
+                 .add_data_template_flowset(202)
+                 .add_data_template(357)
+                 .add_data_template_field(NF9_FIELD_IPV4_SRC_ADDR, 4)
+                 .set_unix_timestamp(1000000)
+                 .build();
+
+    result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(state_->templates.size(), 1);
 }
 
 TEST_F(test, detects_too_large_field_length_in_data_flowset)

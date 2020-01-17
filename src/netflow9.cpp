@@ -78,6 +78,7 @@ const nf9_stats* nf9_get_stats(const nf9_state* state)
 {
     nf9_stats* stats = new nf9_stats;
     *stats = state->stats;
+    stats->memory_usage = state->used_bytes;
     return stats;
 }
 
@@ -96,6 +97,8 @@ int nf9_get_stat(const nf9_stats* stats, int stat)
             return stats->missing_template_errors;
         case NF9_STAT_EXPIRED_TEMPLATES:
             return stats->expired_templates;
+        case NF9_STAT_MEMORY_USAGE:
+            return static_cast<int>(stats->memory_usage);
     }
     return 0;
 }
@@ -105,7 +108,7 @@ void nf9_free_stats(const nf9_stats* stats)
     delete stats;
 }
 
-int nf9_set_option(nf9_state* state, nf9_opt opt, long value)
+int nf9_set_option(nf9_state* state, int opt, long value)
 {
     switch (opt) {
         case NF9_OPT_MAX_MEM_USAGE:

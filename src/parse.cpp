@@ -98,13 +98,21 @@ static size_t get_template_size(const data_template& tmpl)
 static int delete_expired_templates(uint32_t timestamp, nf9_state& state)
 {
     int deleted_templates = 0;
-    uint32_t expiration_timestamp = timestamp - state.template_expire_time;
-    for (auto& element : state.templates) {
-        if (element.second.timestamp <= expiration_timestamp) {
+    uint32_t expiration_timestamp;
+    if (timestamp > state.template_expire_time)
+        expiration_timestamp = timestamp - state.template_expire_time;
+    else
+        expiration_timestamp = 0;
+
+    for (auto it = state.templates.begin(); it != state.templates.end();) {
+        if (it->second.timestamp <= expiration_timestamp) {
             ++deleted_templates;
             ++state.stats.expired_templates;
-            state.used_bytes -= get_template_size(element.second);
-            state.templates.erase(element.first);
+            state.used_bytes -= get_template_size(it->second);
+            it = state.templates.erase(it);
+        }
+        else {
+            ++it;
         }
     }
     return deleted_templates;
@@ -130,15 +138,11 @@ static bool save_template(data_template& tmpl, parsing_context& ctx,
 
     exporter_stream_id stream_id = {ctx.srcaddr, ctx.source_id, ntohs(tid)};
     if (ctx.state.templates.count(stream_id) != 0) {
-        if (tmpl.timestamp >= ctx.state.templates[stream_id].timestamp) {
+        if (tmpl.timestamp >= ctx.state.templates[stream_id].timestamp)
             ctx.state.used_bytes -=
-                sizeof(ctx.state.templates[stream_id]) +
-                ctx.state.templates[stream_id].fields.size() *
-                    sizeof(template_field);
-        }
-        else {
+                get_template_size(ctx.state.templates[stream_id]);
+        else
             return true;
-        }
     }
     ctx.state.templates[stream_id] = tmpl;
 

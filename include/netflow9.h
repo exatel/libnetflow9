@@ -319,6 +319,7 @@ enum nf9_stat_fields {
     NF9_STAT_TOTAL_OPTION_TEMPLATES,
     NF9_STAT_MISSING_TEMPLATE_ERRORS,
     NF9_STAT_EXPIRED_TEMPLATES,
+    NF9_STAT_MEMORY_USAGE,
 };
 
 enum nf9_opt {
@@ -330,7 +331,7 @@ typedef struct nf9_stats nf9_stats;
 NF9_API const nf9_stats* nf9_get_stats(const nf9_state* state);
 NF9_API int nf9_get_stat(const nf9_stats* stats, int stat);
 NF9_API void nf9_free_stats(const nf9_stats*);
-NF9_API int nf9_set_option(nf9_state* state, nf9_opt opt, long value);
+NF9_API int nf9_set_option(nf9_state* state, int opt, long value);
 
 #ifdef __cplusplus
 }

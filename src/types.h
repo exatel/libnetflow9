@@ -15,6 +15,8 @@ struct nf9_stats
     int option_templates = 0;
     int missing_template_errors = 0;
     int expired_templates = 0;
+
+    size_t memory_usage = 0;
 };
 
 using template_field = std::pair<nf9_field, int>;
