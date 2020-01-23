@@ -136,15 +136,14 @@ static bool save_template(data_template& tmpl, parsing_context& ctx,
             return false;
     }
 
-    exporter_stream_id stream_id = {ctx.srcaddr, ctx.source_id, ntohs(tid)};
-    if (ctx.state.templates.count(stream_id) != 0) {
-        if (tmpl.timestamp >= ctx.state.templates[stream_id].timestamp)
-            ctx.state.used_bytes -=
-                get_template_size(ctx.state.templates[stream_id]);
+    stream_id sid = {device_id{ctx.srcaddr, ctx.source_id}, ntohs(tid)};
+    if (ctx.state.templates.count(sid) != 0) {
+        if (tmpl.timestamp >= ctx.state.templates[sid].timestamp)
+            ctx.state.used_bytes -= get_template_size(ctx.state.templates[sid]);
         else
             return true;
     }
-    ctx.state.templates[stream_id] = tmpl;
+    ctx.state.templates[sid] = tmpl;
 
     /* Increment counter of bytes allocated by templates */
     ctx.state.used_bytes += bytes_to_allocate;
@@ -180,6 +179,7 @@ static bool parse_data_template(buffer& buf, data_template& tmpl,
     tmpl.fields.emplace_back(NF9_DATA_FIELD(type), length);
     tmpl.total_length += length;
     tmpl.timestamp = result.timestamp;
+    tmpl.is_option = false;
 
     return true;
 }
@@ -244,6 +244,7 @@ static bool parse_option_template(buffer& buf, data_template& tmpl,
         option_length -= sizeof(type) + sizeof(length);
     }
     tmpl.timestamp = timestamp;
+    tmpl.is_option = true;
 
     return true;
 }
@@ -274,15 +275,16 @@ static bool parse_option_template_flowset(parsing_context& ctx)
     return true;
 }
 
-static bool parse_flow(buffer& buf, data_template& tmpl, flowset& result)
+static bool parse_flow(parsing_context& ctx, data_template& tmpl,
+                       flowset& result)
 {
     if (tmpl.fields.empty()) {
-        buf.advance(buf.remaining());
+        ctx.buf.advance(ctx.buf.remaining());
         return true;
     }
 
-    if (tmpl.total_length > buf.remaining()) {
-        buf.advance(buf.remaining());
+    if (tmpl.total_length > ctx.buf.remaining()) {
+        ctx.buf.advance(ctx.buf.remaining());
         return true;
     }
 
@@ -292,16 +294,21 @@ static bool parse_flow(buffer& buf, data_template& tmpl, flowset& result)
         uint32_t type = tf.first;
         size_t field_length = tf.second;
 
-        if (field_length > buf.remaining())
+        if (field_length > ctx.buf.remaining())
             return false;
 
         if (field_length == 0)
             break;
 
         std::vector<uint8_t> field_value(field_length, 0);
-        buf.get(field_value.data(), field_length);
+        ctx.buf.get(field_value.data(), field_length);
 
         f[type] = field_value;
+    }
+
+    if (tmpl.is_option) {
+        device_id dev_id = {ctx.srcaddr, ctx.source_id};
+        ctx.state.options[dev_id].option_flow = f;
     }
 
     result.flows.emplace_back(std::move(f));
@@ -311,30 +318,30 @@ static bool parse_flow(buffer& buf, data_template& tmpl, flowset& result)
 
 static bool parse_data_flowset(parsing_context& ctx, uint16_t flowset_id)
 {
-    exporter_stream_id stream_id = {ctx.srcaddr, ctx.source_id, flowset_id};
+    stream_id sid = {device_id{ctx.srcaddr, ctx.source_id}, flowset_id};
 
     flowset f = flowset();
     f.type = NF9_FLOWSET_DATA;
 
-    if (ctx.state.templates.count(stream_id) == 0) {
+    if (ctx.state.templates.count(sid) == 0) {
         ++ctx.state.stats.missing_template_errors;
         ctx.buf.advance(ctx.buf.remaining());
         return true;
     }
 
-    data_template& tmpl = ctx.state.templates[stream_id];
+    data_template& tmpl = ctx.state.templates[sid];
 
     uint32_t tmpl_lifetime = ctx.result.timestamp - tmpl.timestamp;
 
     if (tmpl_lifetime > ctx.state.template_expire_time) {
         ++ctx.state.stats.expired_templates;
-        ctx.state.templates.erase(stream_id);
+        ctx.state.templates.erase(sid);
         ctx.buf.advance(ctx.buf.remaining());
         return true;
     }
 
     while (ctx.buf.remaining() > 0) {
-        if (!parse_flow(ctx.buf, tmpl, f))
+        if (!parse_flow(ctx, tmpl, f))
             return false;
     }
 

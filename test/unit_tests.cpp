@@ -389,7 +389,7 @@ TEST_F(test, data_template_with_lower_timestamp)
     parse_result result = parse(packet.data(), packet.size(), &addr);
     ASSERT_NE(result, nullptr);
 
-    ASSERT_EQ(nf9_set_option(state_, NF9_OPT_TEMPLATE_EXPIRE_TIME, 1000), 0);
+    ASSERT_EQ(nf9_ctl(state_, NF9_OPT_TEMPLATE_EXPIRE_TIME, 1000), 0);
 
     packet = netflow_packet_builder()
                  .add_data_template_flowset(0)
@@ -443,7 +443,7 @@ TEST_F(test, try_to_add_too_many_templates)
     EXPECT_EQ(state_->templates.size(), 2);
     stats st = get_stats();
     int memory_used = nf9_get_stat(st.get(), NF9_STAT_MEMORY_USAGE);
-    ASSERT_EQ(nf9_set_option(state_, NF9_OPT_MAX_MEM_USAGE, memory_used), 0);
+    ASSERT_EQ(nf9_ctl(state_, NF9_OPT_MAX_MEM_USAGE, memory_used), 0);
 
     packet = netflow_packet_builder()
                  .add_data_template_flowset(201)

@@ -27,6 +27,24 @@ struct data_template
     std::vector<template_field> fields;
     size_t total_length;
     uint32_t timestamp;
+    bool is_option;
+};
+
+struct option_info
+{
+    flow option_flow;
+    uint32_t timestamp;
+};
+
+/*
+ * Collector devices should use the combination of the source IP address plus
+ * the Source ID field to associate an incoming NetFlow export packet with a
+ * unique instance of NetFlow on a particular device.
+ */
+struct device_id
+{
+    nf9_addr addr;
+    uint32_t id;
 };
 
 /*
@@ -34,23 +52,29 @@ struct data_template
  * exporter devices by using a combination of the exporter source IP
  * address, the source_id field in the Netflow header, and template id.
  */
-struct exporter_stream_id
+struct stream_id
 {
-    nf9_addr addr;
-    uint32_t id;
+    device_id dev_id;
     uint16_t tid;
 };
 
 namespace std
 {
 template <>
-struct hash<exporter_stream_id>
+struct hash<stream_id>
 {
-    size_t operator()(const exporter_stream_id&) const noexcept;
+    size_t operator()(const stream_id&) const noexcept;
+};
+
+template <>
+struct hash<device_id>
+{
+    size_t operator()(const device_id&) const noexcept;
 };
 }  // namespace std
 
-bool operator==(const exporter_stream_id&, const exporter_stream_id&) noexcept;
+bool operator==(const stream_id&, const stream_id&) noexcept;
+bool operator==(const device_id&, const device_id&) noexcept;
 
 static const size_t MAX_TEMPLATE_DATA = 10000;
 static const uint32_t TEMPLATE_EXPIRE_TIME = 15 * 60;
@@ -65,7 +89,8 @@ struct nf9_state
     /* Counter of bytes alocated in templates unordered_map */
     size_t used_bytes = 0;
 
-    std::unordered_map<exporter_stream_id, data_template> templates;
+    std::unordered_map<stream_id, data_template> templates;
+    std::unordered_map<device_id, option_info> options;
 };
 
 struct flowset

@@ -69,6 +69,27 @@ int nf9_get_field(const nf9_parse_result* pr, int flowset, int flownum,
     return 0;
 }
 
+int nf9_get_options(nf9_state* state, const nf9_addr* addr, uint32_t source_id,
+                    nf9_field field, void* dst, size_t* length)
+{
+    device_id dev_id = {*addr, source_id};
+    if (state->options.count(dev_id) == 0)
+        return 1;
+    if (state->options[dev_id].option_flow.count(field) == 0)
+        return 1;
+
+    const std::vector<uint8_t>& value =
+        state->options[dev_id].option_flow.at(field);
+
+    if (*length < value.size())
+        return 1;
+
+    memcpy(dst, value.data(), value.size());
+    *length = value.size();
+
+    return 0;
+}
+
 void nf9_free_parse_result(const nf9_parse_result* pr)
 {
     delete pr;
@@ -108,7 +129,7 @@ void nf9_free_stats(const nf9_stats* stats)
     delete stats;
 }
 
-int nf9_set_option(nf9_state* state, int opt, long value)
+int nf9_ctl(nf9_state* state, int opt, long value)
 {
     switch (opt) {
         case NF9_OPT_MAX_MEM_USAGE:
@@ -131,21 +152,19 @@ int nf9_set_option(nf9_state* state, int opt, long value)
     return 1;
 }
 
-size_t std::hash<exporter_stream_id>::operator()(
-    const exporter_stream_id& sid) const noexcept
+size_t std::hash<device_id>::operator()(const device_id& dev_id) const noexcept
 {
-    size_t ret = sid.id;
-    ret |= sid.tid << 16;
+    size_t ret = dev_id.id;
 
-    switch (sid.addr.family) {
+    switch (dev_id.addr.family) {
         case AF_INET:
-            ret ^= sid.addr.in.sin_addr.s_addr;
-            ret ^= uint32_t(sid.addr.in.sin_port) << 16;
+            ret ^= dev_id.addr.in.sin_addr.s_addr;
+            ret ^= uint32_t(dev_id.addr.in.sin_port) << 16;
             break;
         case AF_INET6: {
             // FIXME: The IPv6 address should be normalized here, this is not
             // reliable.
-            const sockaddr_in6& addr = sid.addr.in6;
+            const sockaddr_in6& addr = dev_id.addr.in6;
             const size_t* parts =
                 reinterpret_cast<const size_t*>(&addr.sin6_addr);
             const size_t n = sizeof(addr.sin6_addr) / sizeof(size_t);
@@ -161,11 +180,9 @@ size_t std::hash<exporter_stream_id>::operator()(
     return ret;
 }
 
-bool operator==(const exporter_stream_id& lhs,
-                const exporter_stream_id& rhs) noexcept
+bool operator==(const device_id& lhs, const device_id& rhs) noexcept
 {
-    if (lhs.id != rhs.id || lhs.tid != rhs.tid ||
-        lhs.addr.family != rhs.addr.family)
+    if (lhs.id != rhs.id || lhs.addr.family != rhs.addr.family)
         return false;
 
     switch (lhs.addr.family) {
@@ -179,5 +196,21 @@ bool operator==(const exporter_stream_id& lhs,
                           sizeof(lhs.addr.in6.sin6_addr)) == 0 &&
                    lhs.addr.in6.sin6_port == rhs.addr.in6.sin6_port;
     }
+    return true;
+}
+
+size_t std::hash<stream_id>::operator()(const stream_id& sid) const noexcept
+{
+    size_t ret = std::hash<device_id>()(sid.dev_id);
+    ret |= sid.tid << 16;
+
+    return ret;
+}
+
+bool operator==(const stream_id& lhs, const stream_id& rhs) noexcept
+{
+    if (!(lhs.dev_id == rhs.dev_id) || lhs.tid != rhs.tid)
+        return false;
+
     return true;
 }
