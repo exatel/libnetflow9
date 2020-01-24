@@ -310,9 +310,8 @@ NF9_API int nf9_get_flowset_type(const nf9_parse_result* pr, int flowset);
 NF9_API size_t nf9_get_num_flows(const nf9_parse_result* pr, int flowset);
 NF9_API int nf9_get_field(const nf9_parse_result* pr, int flowset, int flow,
                           nf9_field field, void* dst, size_t* length);
-NF9_API int nf9_get_options(nf9_state* state, const nf9_addr* addr,
-                            uint32_t source_id, nf9_field field, void* dst,
-                            size_t* length);
+NF9_API int nf9_get_option(const nf9_parse_result* pr, nf9_field field,
+                           void* dst, size_t* length);
 
 enum nf9_stat_fields {
     NF9_STAT_PROCESSED_PACKETS,

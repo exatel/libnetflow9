@@ -22,6 +22,7 @@ int nf9_parse(nf9_state* state, nf9_parse_result** result, const uint8_t* buf,
 {
     *result = new nf9_parse_result;
     (*result)->addr = *addr;
+    (*result)->state = state;
 
     if (!parse(buf, len, *addr, state, *result)) {
         state->stats.malformed_packets++;
@@ -69,17 +70,17 @@ int nf9_get_field(const nf9_parse_result* pr, int flowset, int flownum,
     return 0;
 }
 
-int nf9_get_options(nf9_state* state, const nf9_addr* addr, uint32_t source_id,
-                    nf9_field field, void* dst, size_t* length)
+int nf9_get_option(const nf9_parse_result* pr, nf9_field field, void* dst,
+                   size_t* length)
 {
-    device_id dev_id = {*addr, source_id};
-    if (state->options.count(dev_id) == 0)
+    device_id dev_id = {pr->addr, pr->src_id};
+    if (pr->state->options.count(dev_id) == 0)
         return 1;
-    if (state->options[dev_id].option_flow.count(field) == 0)
+    if (pr->state->options.at(dev_id).options_flow.count(field) == 0)
         return 1;
 
     const std::vector<uint8_t>& value =
-        state->options[dev_id].option_flow.at(field);
+        pr->state->options.at(dev_id).options_flow.at(field);
 
     if (*length < value.size())
         return 1;

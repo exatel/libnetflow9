@@ -308,7 +308,7 @@ static bool parse_flow(parsing_context& ctx, data_template& tmpl,
 
     if (tmpl.is_option) {
         device_id dev_id = {ctx.srcaddr, ctx.source_id};
-        ctx.state.options[dev_id].option_flow = f;
+        ctx.state.options[dev_id].options_flow = f;
     }
 
     result.flows.emplace_back(std::move(f));
@@ -402,6 +402,8 @@ bool parse(const uint8_t* data, size_t len, const nf9_addr& srcaddr,
 
     if (!parse_header(buf, header, result->timestamp, result->system_uptime))
         return false;
+
+    result->src_id = ntohl(header.source_id);
 
     parsing_context context = {buf, ntohl(header.source_id), srcaddr, *result,
                                *state};

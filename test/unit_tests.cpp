@@ -525,3 +525,69 @@ TEST_F(test, empty_template)
     result = parse(packet.data(), packet.size(), &addr);
     ASSERT_EQ(result, nullptr);
 }
+
+TEST_F(test, obtain_options_data)
+{
+    const int template_id = 1000;
+    const uint32_t src_id = 303;
+    std::vector<uint8_t> packet;
+    packet = netflow_packet_builder()
+                 .add_option_template_flowset(template_id)
+                 .add_option_scope_field(NF9_SCOPE_FIELD_INTERFACE & 0xffff, 4)
+                 .add_option_field(NF9_FIELD_FLOW_SAMPLER_RANDOM_INTERVAL, 4)
+                 .set_source_id(src_id)
+                 .build();
+    nf9_addr addr = make_inet_addr("192.192.192.193");
+    parse_result result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_NE(result, nullptr);
+
+    packet = netflow_packet_builder()
+                 .add_data_flowset(template_id)
+                 .add_data_field(uint32_t(2000))
+                 .add_data_field(uint32_t(100))
+                 .set_source_id(src_id)
+                 .build();
+    result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_NE(result, nullptr);
+
+    packet = netflow_packet_builder()
+                 .add_data_template_flowset(0)
+                 .add_data_template(256)
+                 .add_data_template_field(NF9_FIELD_IPV4_SRC_ADDR, 4)
+                 .add_data_template_field(NF9_FIELD_IPV4_DST_ADDR, 4)
+                 .set_source_id(src_id)
+                 .build();
+    result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_NE(result, nullptr);
+
+    packet = netflow_packet_builder()
+                 .add_data_flowset(256)
+                 .add_data_field(uint32_t(875770417))
+                 .add_data_field(uint32_t(943142453))
+                 .set_source_id(src_id)
+                 .build();
+    result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_NE(result, nullptr);
+
+    uint32_t sampling;
+    size_t len = sizeof(uint32_t);
+    ASSERT_EQ(
+        nf9_get_option(result.get(), NF9_FIELD_FLOW_SAMPLER_RANDOM_INTERVAL,
+                       &sampling, &len),
+        0);
+    EXPECT_EQ(sampling, 100);
+
+    /* Same data record, but with different source_id */
+    packet = netflow_packet_builder()
+                 .add_data_flowset(256)
+                 .add_data_field(uint32_t(875770417))
+                 .add_data_field(uint32_t(943142453))
+                 .set_source_id(src_id + 10)
+                 .build();
+    result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_NE(result, nullptr);
+    ASSERT_EQ(
+        nf9_get_option(result.get(), NF9_FIELD_FLOW_SAMPLER_RANDOM_INTERVAL,
+                       &sampling, &len),
+        1);
+}

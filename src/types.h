@@ -30,9 +30,9 @@ struct data_template
     bool is_option;
 };
 
-struct option_info
+struct device_options
 {
-    flow option_flow;
+    flow options_flow;
     uint32_t timestamp;
 };
 
@@ -63,18 +63,18 @@ namespace std
 template <>
 struct hash<stream_id>
 {
-    size_t operator()(const stream_id&) const noexcept;
+    size_t operator()(const stream_id &) const noexcept;
 };
 
 template <>
 struct hash<device_id>
 {
-    size_t operator()(const device_id&) const noexcept;
+    size_t operator()(const device_id &) const noexcept;
 };
 }  // namespace std
 
-bool operator==(const stream_id&, const stream_id&) noexcept;
-bool operator==(const device_id&, const device_id&) noexcept;
+bool operator==(const stream_id &, const stream_id &) noexcept;
+bool operator==(const device_id &, const device_id &) noexcept;
 
 static const size_t MAX_TEMPLATE_DATA = 10000;
 static const uint32_t TEMPLATE_EXPIRE_TIME = 15 * 60;
@@ -90,7 +90,7 @@ struct nf9_state
     size_t used_bytes = 0;
 
     std::unordered_map<stream_id, data_template> templates;
-    std::unordered_map<device_id, option_info> options;
+    std::unordered_map<device_id, device_options> options;
 };
 
 struct flowset
@@ -109,8 +109,10 @@ struct nf9_parse_result
 {
     std::vector<flowset> flowsets;
     nf9_addr addr;
+    uint32_t src_id;
     uint32_t system_uptime;
     uint32_t timestamp;
+    nf9_state *state;
 };
 
 struct netflow_header

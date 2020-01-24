@@ -69,6 +69,32 @@ TEST_F(pcap_test, basic_stats_test)
     EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 0);
 }
 
+TEST_F(pcap_test, options_obtaining_test)
+{
+    std::vector<parse_result> parsed_pcap = parse_pcap("testcases/1.pcap");
+    for (const auto &pr : parsed_pcap) {
+        for (size_t flowset = 0; flowset < nf9_get_num_flowsets(pr.get());
+             ++flowset) {
+            if (nf9_get_flowset_type(pr.get(), flowset) != NF9_FLOWSET_DATA)
+                continue;
+            for (size_t flownum = 0;
+                 flownum < nf9_get_num_flows(pr.get(), flowset); ++flownum) {
+                uint32_t flows_exp;
+                uint32_t pkt_exp;
+                size_t len = sizeof(uint32_t);
+                ASSERT_EQ(nf9_get_option(pr.get(), NF9_FIELD_TOTAL_FLOWS_EXP,
+                                         &flows_exp, &len),
+                          0);
+                ASSERT_EQ(ntohl(flows_exp), 1);
+                ASSERT_EQ(nf9_get_option(pr.get(), NF9_FIELD_TOTAL_PKTS_EXP,
+                                         &pkt_exp, &len),
+                          0);
+                ASSERT_EQ(ntohl(pkt_exp), 20568);
+            }
+        }
+    }
+}
+
 TEST_F(pcap_test, malformed_1_test)
 {
     std::vector<parse_result> pr = parse_pcap("testcases/malformed_1.pcap");
@@ -81,9 +107,9 @@ TEST_F(pcap_test, malformed_1_test)
 TEST_F(pcap_test, malformed_2_test)
 {
     /*
-     * This PCAP has 16 packets.  In each packet, there is a flowset that has
-     * length equal to 1, which is invalid.  The minimum length of a flowset is
-     * 4 bytes.
+     * This PCAP has 16 packets.  In each packet, there is a flowset that
+     * has length equal to 1, which is invalid.  The minimum length of a
+     * flowset is 4 bytes.
      */
     std::vector<parse_result> pr = parse_pcap("testcases/malformed_2.pcap");
     stats st = get_stats();
@@ -130,9 +156,9 @@ TEST_F(pcap_test, malformed_5_test)
 TEST_F(pcap_test, malformed_6_test)
 {
     /*
-     * The PCAP contains a Netflow packet where first flowset contains normal
-     * option template but second has length that is greater than zero
-     * and less than 4 bytes.
+     * The PCAP contains a Netflow packet where first flowset contains
+     * normal option template but second has length that is greater than
+     * zero and less than 4 bytes.
      */
     std::vector<parse_result> pr = parse_pcap("testcases/malformed_6.pcap");
     stats st = get_stats();
