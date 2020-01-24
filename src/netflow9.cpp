@@ -49,6 +49,16 @@ size_t nf9_get_num_flows(const nf9_parse_result* pr, int flowset)
     return pr->flowsets[flowset].flows.size();
 }
 
+uint32_t nf9_get_timestamp(const nf9_parse_result* pr)
+{
+    return pr->timestamp;
+}
+
+uint32_t nf9_get_uptime(const nf9_parse_result* pr)
+{
+    return pr->system_uptime;
+}
+
 int nf9_get_field(const nf9_parse_result* pr, int flowset, int flownum,
                   nf9_field field, void* dst, size_t* length)
 {

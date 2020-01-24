@@ -299,6 +299,9 @@ enum nf9_scope_field {
 
 NF9_API size_t nf9_get_num_flowsets(const nf9_parse_result* pr);
 
+NF9_API uint32_t nf9_get_timestamp(const nf9_parse_result* pr);
+NF9_API uint32_t nf9_get_uptime(const nf9_parse_result* pr);
+
 enum nf9_flowset_type {
     NF9_FLOWSET_TEMPLATE,
     NF9_FLOWSET_OPTIONS,

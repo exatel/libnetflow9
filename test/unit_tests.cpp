@@ -203,11 +203,13 @@ TEST_F(test, parsing_data_flowset_from_template)
                  .add_data_template(256)
                  .add_data_template_field(NF9_FIELD_IPV4_SRC_ADDR, 4)
                  .add_data_template_field(NF9_FIELD_IPV4_DST_ADDR, 4)
+                 .set_system_uptime(10000)
                  .build();
     result = parse(packet.data(), packet.size(), &addr);
     ASSERT_NE(result, nullptr);
     ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
     ASSERT_EQ(nf9_get_flowset_type(result.get(), 0), NF9_FLOWSET_TEMPLATE);
+    ASSERT_EQ(nf9_get_uptime(result.get()), 10000);
 
     // Now, attempt to parse data flowset in previous template format.
     packet = netflow_packet_builder()
@@ -363,6 +365,7 @@ TEST_F(test, data_templates_expiration)
     ASSERT_NE(result, nullptr);
     ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
     ASSERT_EQ(nf9_get_flowset_type(result.get(), 0), NF9_FLOWSET_TEMPLATE);
+    ASSERT_EQ(nf9_get_timestamp(result.get()), 100);
 
     // Now, attempt to parse data flowset in previous template format.
     packet = netflow_packet_builder()
