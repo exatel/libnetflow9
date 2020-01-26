@@ -20,3 +20,5 @@ target_link_libraries(netflowtests
   GTest::Main
   "${LIBTINS_LIBRARIES}"
   )
+
+add_subdirectory(memory-stress-test)
