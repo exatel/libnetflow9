@@ -15,7 +15,7 @@
 // Memory stress test.
 //
 // This test program will create a `nf9_state' and set a memory usage limit via
-// `nf9_set_option'.  Then it will loop, feeding the state random templates,
+// `nf9_ctl'.  Then it will loop, feeding the state random templates,
 // printing actual and reported (by nf9_get_stat) memory usage to stdout.
 //
 // *******************************************************************************
@@ -88,7 +88,7 @@ int main(int argc, char** argv)
     nf9_state* st = nf9_init(0);
     time_t print_time = 0;
 
-    nf9_set_option(st, NF9_OPT_MAX_MEM_USAGE, MAX_MEM);
+    nf9_ctl(st, NF9_OPT_MAX_MEM_USAGE, MAX_MEM);
 
     while (true) {
         std::vector<uint8_t> packet = generate_packet();

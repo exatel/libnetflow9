@@ -26,10 +26,10 @@ extern "C" void LLVMFuzzerInitialize()
 {
     state = nf9_init(0);
 
-    if (nf9_set_option(state, NF9_OPT_MAX_MEM_USAGE, 1024 * 1000))
+    if (nf9_ctl(state, NF9_OPT_MAX_MEM_USAGE, 1024 * 1000))
         abort();
 
-    if (nf9_set_option(state, NF9_OPT_TEMPLATE_EXPIRE_TIME, 5))
+    if (nf9_ctl(state, NF9_OPT_TEMPLATE_EXPIRE_TIME, 5))
         abort();
 }
 
