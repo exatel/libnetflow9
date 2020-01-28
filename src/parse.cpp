@@ -261,6 +261,28 @@ static bool parse_option_template_flowset(parsing_context& ctx)
     return true;
 }
 
+static int delete_expired_options(uint32_t timestamp, nf9_state& state)
+{
+    int deleted_flows = 0;
+    uint32_t expiration_timestamp;
+    if (timestamp > state.option_expire_time)
+        expiration_timestamp = timestamp - state.option_expire_time;
+    else
+        expiration_timestamp = 0;
+
+    for (auto it = state.options.begin(); it != state.options.end();) {
+        if (it->second.timestamp <= expiration_timestamp) {
+            ++deleted_flows;
+            ++state.stats.expired_templates;  // expired flows ?
+            it = state.options.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+    return deleted_flows;
+}
+
 static bool parse_flow(parsing_context& ctx, data_template& tmpl,
                        flowset& result)
 {
@@ -294,11 +316,24 @@ static bool parse_flow(parsing_context& ctx, data_template& tmpl,
 
     if (tmpl.is_option) {
         device_id dev_id = {ctx.srcaddr, ctx.source_id};
-        ctx.state.options[dev_id].options_flow = f;
+        device_options dev_opts = {f, ctx.result.timestamp};
+        try {
+            ctx.state.options[dev_id] = dev_opts;
+        } catch (const std::bad_alloc&) {
+            int deleted =
+                delete_expired_options(ctx.result.timestamp, ctx.state);
+            if (deleted == 0)
+                return false;
+
+            try {
+                ctx.state.options[dev_id] = dev_opts;
+            } catch (const std::bad_alloc&) {
+                return false;
+            }
+        }
     }
 
     result.flows.emplace_back(std::move(f));
-
     return true;
 }
 

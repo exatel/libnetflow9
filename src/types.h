@@ -12,7 +12,8 @@
 #include <memory_resource>
 #include <unordered_map>
 
-namespace nf9_std_pmr {
+namespace nf9_std_pmr
+{
 using namespace std::pmr;
 }
 
@@ -20,7 +21,8 @@ using namespace std::pmr;
 #include <experimental/memory_resource>
 #include <experimental/unordered_map>
 
-namespace nf9_std_pmr {
+namespace nf9_std_pmr
+{
 using namespace std::experimental::pmr;
 }
 
@@ -52,8 +54,9 @@ struct data_template
     bool is_option;
 };
 
-static const size_t MAX_TEMPLATE_DATA = 10000;
-static const uint32_t TEMPLATE_EXPIRE_TIME = 15 * 60;
+static const size_t MAX_MEMORY_USAGE = 10000;
+static const uint32_t TEMPLATE_EXPIRE_TIME = 5 * 60;
+static const uint32_t OPTION_EXPIRE_TIME = 15 * 60;
 
 class umap_resource : public nf9_std_pmr::memory_resource
 {
@@ -70,8 +73,7 @@ public:
     {
         if (bytes > max_size_ - used_)
             throw std::bad_alloc();
-        nf9_std_pmr::memory_resource *mr =
-            nf9_std_pmr::new_delete_resource();
+        nf9_std_pmr::memory_resource *mr = nf9_std_pmr::new_delete_resource();
         void *result = mr->allocate(bytes, alignment);
         used_ += bytes;
         return result;
@@ -80,14 +82,12 @@ public:
     virtual void do_deallocate(void *p, std::size_t bytes,
                                std::size_t alignment) override
     {
-        nf9_std_pmr::memory_resource *mr =
-            nf9_std_pmr::new_delete_resource();
+        nf9_std_pmr::memory_resource *mr = nf9_std_pmr::new_delete_resource();
         mr->deallocate(p, bytes, alignment);
         used_ -= bytes;
     };
 
-    virtual bool do_is_equal(
-        const nf9_std_pmr::memory_resource &other) const
+    virtual bool do_is_equal(const nf9_std_pmr::memory_resource &other) const
         noexcept override
     {
         if (auto *obj = dynamic_cast<const umap_resource *>(&other)) {
@@ -166,7 +166,8 @@ struct nf9_state
 {
     int flags;
     nf9_stats stats;
-    uint32_t template_expire_time = TEMPLATE_EXPIRE_TIME;
+    uint32_t template_expire_time;
+    uint32_t option_expire_time;
     std::unique_ptr<umap_resource> limited_mr;
 
     nf9_std_pmr::unordered_map<stream_id, data_template> templates;

@@ -330,6 +330,7 @@ enum nf9_stat_fields {
 enum nf9_opt {
     NF9_OPT_MAX_MEM_USAGE,
     NF9_OPT_TEMPLATE_EXPIRE_TIME,
+    NF9_OPT_OPTION_EXPIRE_TIME,
 };
 
 typedef struct nf9_stats nf9_stats;

@@ -7,16 +7,15 @@
 
 nf9_state* nf9_init(int flags)
 {
-    std::unique_ptr mr = std::make_unique<umap_resource>(MAX_TEMPLATE_DATA);
+    std::unique_ptr mr = std::make_unique<umap_resource>(MAX_MEMORY_USAGE);
     auto* addr = mr.get();
     nf9_state* st = new nf9_state{
-        /*flags=*/flags,
-        /*stats=*/{},
-        /*template_expire_time=*/TEMPLATE_EXPIRE_TIME,
-        /*limited_mr=*/std::move(mr),
-        /*templates=*/
+        flags,
+        {},
+        TEMPLATE_EXPIRE_TIME,
+        OPTION_EXPIRE_TIME,
+        std::move(mr),
         nf9_std_pmr::unordered_map<stream_id, data_template>(addr),
-        /*options=*/
         nf9_std_pmr::unordered_map<device_id, device_options>(addr),
     };
 
@@ -166,6 +165,14 @@ int nf9_ctl(nf9_state* state, int opt, long value)
         case NF9_OPT_TEMPLATE_EXPIRE_TIME:
             if (value > 0) {
                 state->template_expire_time = static_cast<uint32_t>(value);
+                return 0;
+            }
+            else {
+                return 1;
+            }
+        case NF9_OPT_OPTION_EXPIRE_TIME:
+            if (value > 0) {
+                state->option_expire_time = static_cast<uint32_t>(value);
                 return 0;
             }
             else {
