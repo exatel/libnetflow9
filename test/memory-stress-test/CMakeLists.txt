@@ -7,6 +7,7 @@ target_compile_features(netflow-memory-stress PRIVATE cxx_std_17)
 target_include_directories(netflow-memory-stress PRIVATE
   "../../src"
   "../"
+  "${CMAKE_CURRENT_BINARY_DIR}/../.."
   )
 target_link_libraries(netflow-memory-stress
   netflow9

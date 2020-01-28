@@ -88,13 +88,6 @@ static bool parse_header(buffer& buf, netflow_header& hdr, uint32_t& timestamp,
     return true;
 }
 
-static size_t get_template_size(const data_template& tmpl)
-{
-    size_t tmpl_size =
-        sizeof(data_template) + tmpl.fields.size() * sizeof(template_field);
-    return tmpl_size;
-}
-
 static int delete_expired_templates(uint32_t timestamp, nf9_state& state)
 {
     int deleted_templates = 0;
@@ -108,7 +101,6 @@ static int delete_expired_templates(uint32_t timestamp, nf9_state& state)
         if (it->second.timestamp <= expiration_timestamp) {
             ++deleted_templates;
             ++state.stats.expired_templates;
-            state.used_bytes -= get_template_size(it->second);
             it = state.templates.erase(it);
         }
         else {
@@ -123,30 +115,24 @@ static bool save_template(data_template& tmpl, parsing_context& ctx,
 {
     if (tmpl.total_length == 0)
         return false;
+    stream_id sid = {device_id{ctx.srcaddr, ctx.source_id}, ntohs(tid)};
+    if (ctx.state.templates.count(sid) != 0 &&
+        (tmpl.timestamp < ctx.state.templates[sid].timestamp))
+        return false;
 
-    size_t bytes_to_allocate = get_template_size(tmpl);
-
-    if (ctx.state.used_bytes + bytes_to_allocate >=
-        ctx.state.max_template_data) {
+    try {
+        ctx.state.templates[sid] = tmpl;
+    } catch (const std::bad_alloc&) {
         int deleted = delete_expired_templates(ctx.result.timestamp, ctx.state);
         if (deleted == 0)
             return false;
-        else if (ctx.state.used_bytes + bytes_to_allocate >=
-                 ctx.state.max_template_data)
+
+        try {
+            ctx.state.templates[sid] = tmpl;
+        } catch (const std::bad_alloc&) {
             return false;
+        }
     }
-
-    stream_id sid = {device_id{ctx.srcaddr, ctx.source_id}, ntohs(tid)};
-    if (ctx.state.templates.count(sid) != 0) {
-        if (tmpl.timestamp >= ctx.state.templates[sid].timestamp)
-            ctx.state.used_bytes -= get_template_size(ctx.state.templates[sid]);
-        else
-            return true;
-    }
-    ctx.state.templates[sid] = tmpl;
-
-    /* Increment counter of bytes allocated by templates */
-    ctx.state.used_bytes += bytes_to_allocate;
 
     return true;
 }

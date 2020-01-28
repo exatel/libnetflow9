@@ -13,6 +13,7 @@ target_compile_features(netflowtests PRIVATE cxx_std_17)
 target_include_directories(netflowtests PRIVATE
   "../src"
   "${GTEST_INCLUDE_DIRS}"
+  "${CMAKE_CURRENT_BINARY_DIR}/.."
   )
 target_link_libraries(netflowtests
   netflow9

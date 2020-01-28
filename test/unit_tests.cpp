@@ -402,7 +402,7 @@ TEST_F(test, data_template_with_lower_timestamp)
                  .build();
 
     result = parse(packet.data(), packet.size(), &addr);
-    ASSERT_NE(result, nullptr);
+    ASSERT_EQ(result, nullptr);
 
     EXPECT_EQ(state_->templates.size(), 1);
 

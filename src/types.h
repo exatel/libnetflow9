@@ -3,8 +3,30 @@
 
 #include <netflow9.h>
 #include <netinet/in.h>
-#include <unordered_map>
+#include <iostream>
 #include <vector>
+
+#include "config.h"
+
+#ifdef NF9_HAVE_MEMORY_RESOURCE
+#include <memory_resource>
+#include <unordered_map>
+
+namespace nf9_std_pmr {
+using namespace std::pmr;
+}
+
+#elif defined(NF9_HAVE_EXPERIMENTAL_MEMORY_RESOURCE)
+#include <experimental/memory_resource>
+#include <experimental/unordered_map>
+
+namespace nf9_std_pmr {
+using namespace std::experimental::pmr;
+}
+
+#else
+#error "<memory_resource> not found"
+#endif
 
 struct nf9_stats
 {
@@ -28,6 +50,70 @@ struct data_template
     size_t total_length;
     uint32_t timestamp;
     bool is_option;
+};
+
+static const size_t MAX_TEMPLATE_DATA = 10000;
+static const uint32_t TEMPLATE_EXPIRE_TIME = 15 * 60;
+
+class umap_resource : public nf9_std_pmr::memory_resource
+{
+public:
+    umap_resource(size_t max_size) : max_size_(max_size)
+    {
+        used_ = 0;
+    };
+    umap_resource(const umap_resource &other) = delete;
+    umap_resource(umap_resource &&other) = delete;
+    //: max_size_(other.max_size_), used_(other.used_){};
+
+    virtual void *do_allocate(std::size_t bytes, std::size_t alignment) override
+    {
+        if (bytes > max_size_ - used_)
+            throw std::bad_alloc();
+        nf9_std_pmr::memory_resource *mr =
+            nf9_std_pmr::new_delete_resource();
+        void *result = mr->allocate(bytes, alignment);
+        used_ += bytes;
+        return result;
+    };
+
+    virtual void do_deallocate(void *p, std::size_t bytes,
+                               std::size_t alignment) override
+    {
+        nf9_std_pmr::memory_resource *mr =
+            nf9_std_pmr::new_delete_resource();
+        mr->deallocate(p, bytes, alignment);
+        used_ -= bytes;
+    };
+
+    virtual bool do_is_equal(
+        const nf9_std_pmr::memory_resource &other) const
+        noexcept override
+    {
+        if (auto *obj = dynamic_cast<const umap_resource *>(&other)) {
+            if (max_size_ == obj->max_size_ && used_ == obj->used_)
+                return true;
+            return false;
+        }
+        return false;
+    };
+
+    size_t get_memory_usage() const
+    {
+        return used_;
+    }
+
+    void set_max_memory_usage(size_t max_mem)
+    {
+        max_size_ = max_mem;
+    }
+
+private:
+    /* Max memory allocation in bytes */
+    size_t max_size_;
+
+    /* Counter of bytes alocated in templates unordered_map */
+    size_t used_;
 };
 
 struct device_options
@@ -76,21 +162,15 @@ struct hash<device_id>
 bool operator==(const stream_id &, const stream_id &) noexcept;
 bool operator==(const device_id &, const device_id &) noexcept;
 
-static const size_t MAX_TEMPLATE_DATA = 10000;
-static const uint32_t TEMPLATE_EXPIRE_TIME = 15 * 60;
-
 struct nf9_state
 {
     int flags;
     nf9_stats stats;
-    size_t max_template_data = MAX_TEMPLATE_DATA;
     uint32_t template_expire_time = TEMPLATE_EXPIRE_TIME;
+    std::unique_ptr<umap_resource> limited_mr;
 
-    /* Counter of bytes alocated in templates unordered_map */
-    size_t used_bytes = 0;
-
-    std::unordered_map<stream_id, data_template> templates;
-    std::unordered_map<device_id, device_options> options;
+    nf9_std_pmr::unordered_map<stream_id, data_template> templates;
+    nf9_std_pmr::unordered_map<device_id, device_options> options;
 };
 
 struct flowset

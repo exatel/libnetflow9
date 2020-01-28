@@ -8,6 +8,7 @@ option(NF9_BUILD_BENCHMARK
   "If set, build benchmarks (requires google benchmark library)" OFF)
 
 include(CheckCXXCompilerFlag)
+include(CheckIncludeFileCXX)
 
 if (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
@@ -56,6 +57,22 @@ else ()
   nf9_add_compiler_flag("-Wshadow")
   nf9_add_compiler_flag("-Wformat=2")
 endif ()
+
+check_include_file_cxx("memory_resource" NF9_HAVE_MEMORY_RESOURCE)
+
+if(NOT NF9_HAVE_MEMORY_RESOURCE)
+  check_include_file_cxx("experimental/memory_resource"
+    NF9_HAVE_EXPERIMENTAL_MEMORY_RESOURCE)
+endif()
+
+if(NOT NF9_HAVE_MEMORY_RESOURCE AND NOT NF9_HAVE_EXPERIMENTAL_MEMORY_RESOURCE)
+  message(
+    FATAL_ERROR
+    "Could not find required <memory_resource> or <experimental/memory_resource> headers")
+endif()
+
+configure_file("${PROJECT_SOURCE_DIR}/config.h.in" "${CMAKE_CURRENT_BINARY_DIR}/config.h")
+target_include_directories(netflow9 PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
 install(TARGETS netflow9
         LIBRARY DESTINATION lib

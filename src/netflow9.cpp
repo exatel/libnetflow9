@@ -7,8 +7,19 @@
 
 nf9_state* nf9_init(int flags)
 {
-    nf9_state* st = new nf9_state();
-    st->flags = flags;
+    std::unique_ptr mr = std::make_unique<umap_resource>(MAX_TEMPLATE_DATA);
+    auto* addr = mr.get();
+    nf9_state* st = new nf9_state{
+        /*flags=*/flags,
+        /*stats=*/{},
+        /*template_expire_time=*/TEMPLATE_EXPIRE_TIME,
+        /*limited_mr=*/std::move(mr),
+        /*templates=*/
+        nf9_std_pmr::unordered_map<stream_id, data_template>(addr),
+        /*options=*/
+        nf9_std_pmr::unordered_map<device_id, device_options>(addr),
+    };
+
     return st;
 }
 
@@ -110,7 +121,7 @@ const nf9_stats* nf9_get_stats(const nf9_state* state)
 {
     nf9_stats* stats = new nf9_stats;
     *stats = state->stats;
-    stats->memory_usage = state->used_bytes;
+    stats->memory_usage = state->limited_mr->get_memory_usage();
     return stats;
 }
 
@@ -145,7 +156,8 @@ int nf9_ctl(nf9_state* state, int opt, long value)
     switch (opt) {
         case NF9_OPT_MAX_MEM_USAGE:
             if (value > 0) {
-                state->max_template_data = static_cast<size_t>(value);
+                state->limited_mr->set_max_memory_usage(
+                    static_cast<size_t>(value));
                 return 0;
             }
             else {
