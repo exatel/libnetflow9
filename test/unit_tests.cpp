@@ -375,7 +375,7 @@ TEST_F(test, data_templates_expiration)
                  .build();
     result = parse(packet.data(), packet.size(), &addr);
     stats st = get_stats();
-    ASSERT_EQ(nf9_get_stat(st.get(), NF9_STAT_EXPIRED_TEMPLATES), 1);
+    ASSERT_EQ(nf9_get_stat(st.get(), NF9_STAT_EXPIRED_OBJECTS), 1);
 }
 
 TEST_F(test, data_template_with_lower_timestamp)

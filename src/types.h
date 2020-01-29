@@ -4,27 +4,22 @@
 #include <netflow9.h>
 #include <netinet/in.h>
 #include <iostream>
-#include <vector>
 
 #include "config.h"
 
 #ifdef NF9_HAVE_MEMORY_RESOURCE
 #include <memory_resource>
 #include <unordered_map>
+#include <vector>
 
-namespace nf9_std_pmr
-{
-using namespace std::pmr;
-}
+namespace pmr = std::pmr;
 
 #elif defined(NF9_HAVE_EXPERIMENTAL_MEMORY_RESOURCE)
 #include <experimental/memory_resource>
 #include <experimental/unordered_map>
+#include <experimental/vector>
 
-namespace nf9_std_pmr
-{
-using namespace std::experimental::pmr;
-}
+namespace pmr = std::experimental::pmr;
 
 #else
 #error "<memory_resource> not found"
@@ -44,11 +39,11 @@ struct nf9_stats
 };
 
 using template_field = std::pair<nf9_field, int>;
-using flow = std::unordered_map<int, std::vector<uint8_t>>;
+using flow = pmr::unordered_map<int, pmr::vector<uint8_t>>;
 
 struct data_template
 {
-    std::vector<template_field> fields;
+    pmr::vector<template_field> fields;
     size_t total_length;
     uint32_t timestamp;
     bool is_option;
@@ -58,61 +53,31 @@ static const size_t MAX_MEMORY_USAGE = 10000;
 static const uint32_t TEMPLATE_EXPIRE_TIME = 5 * 60;
 static const uint32_t OPTION_EXPIRE_TIME = 15 * 60;
 
-class umap_resource : public nf9_std_pmr::memory_resource
+class limited_memory_resource : public pmr::memory_resource
 {
 public:
-    umap_resource(size_t max_size) : max_size_(max_size)
-    {
-        used_ = 0;
-    };
-    umap_resource(const umap_resource &other) = delete;
-    umap_resource(umap_resource &&other) = delete;
-    //: max_size_(other.max_size_), used_(other.used_){};
+    limited_memory_resource(size_t max_size) : max_size_(max_size), used_(0){};
+    limited_memory_resource(const limited_memory_resource &other) = delete;
+    limited_memory_resource(limited_memory_resource &&other) = delete;
 
-    virtual void *do_allocate(std::size_t bytes, std::size_t alignment) override
-    {
-        if (bytes > max_size_ - used_)
-            throw std::bad_alloc();
-        nf9_std_pmr::memory_resource *mr = nf9_std_pmr::new_delete_resource();
-        void *result = mr->allocate(bytes, alignment);
-        used_ += bytes;
-        return result;
-    };
+    virtual void *do_allocate(std::size_t bytes,
+                              std::size_t alignment) override;
 
     virtual void do_deallocate(void *p, std::size_t bytes,
-                               std::size_t alignment) override
-    {
-        nf9_std_pmr::memory_resource *mr = nf9_std_pmr::new_delete_resource();
-        mr->deallocate(p, bytes, alignment);
-        used_ -= bytes;
-    };
+                               std::size_t alignment) override;
 
-    virtual bool do_is_equal(const nf9_std_pmr::memory_resource &other) const
-        noexcept override
-    {
-        if (auto *obj = dynamic_cast<const umap_resource *>(&other)) {
-            if (max_size_ == obj->max_size_ && used_ == obj->used_)
-                return true;
-            return false;
-        }
-        return false;
-    };
+    virtual bool do_is_equal(const pmr::memory_resource &other) const
+        noexcept override;
 
-    size_t get_memory_usage() const
-    {
-        return used_;
-    }
+    size_t get_current() const;
 
-    void set_max_memory_usage(size_t max_mem)
-    {
-        max_size_ = max_mem;
-    }
+    void set_limit(size_t max_mem);
 
 private:
     /* Max memory allocation in bytes */
     size_t max_size_;
 
-    /* Counter of bytes alocated in templates unordered_map */
+    /* Counter of allocated bytes*/
     size_t used_;
 };
 
@@ -168,10 +133,10 @@ struct nf9_state
     nf9_stats stats;
     uint32_t template_expire_time;
     uint32_t option_expire_time;
-    std::unique_ptr<umap_resource> limited_mr;
+    std::unique_ptr<limited_memory_resource> memory;
 
-    nf9_std_pmr::unordered_map<stream_id, data_template> templates;
-    nf9_std_pmr::unordered_map<device_id, device_options> options;
+    pmr::unordered_map<stream_id, data_template> templates;
+    pmr::unordered_map<device_id, device_options> options;
 };
 
 struct flowset

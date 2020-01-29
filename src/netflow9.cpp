@@ -7,16 +7,19 @@
 
 nf9_state* nf9_init(int flags)
 {
-    std::unique_ptr mr = std::make_unique<umap_resource>(MAX_MEMORY_USAGE);
+    std::unique_ptr mr =
+        std::make_unique<limited_memory_resource>(MAX_MEMORY_USAGE);
     auto* addr = mr.get();
     nf9_state* st = new nf9_state{
-        flags,
-        {},
-        TEMPLATE_EXPIRE_TIME,
-        OPTION_EXPIRE_TIME,
-        std::move(mr),
-        nf9_std_pmr::unordered_map<stream_id, data_template>(addr),
-        nf9_std_pmr::unordered_map<device_id, device_options>(addr),
+        /*flags=*/flags,
+        /*stats=*/{},
+        /*template_expire_time=*/TEMPLATE_EXPIRE_TIME,
+        /*option_expire_time=*/OPTION_EXPIRE_TIME,
+        /*memory=*/std::move(mr),
+        /*templates=*/
+        pmr::unordered_map<stream_id, data_template>(addr),
+        /*options=*/
+        pmr::unordered_map<device_id, device_options>(addr),
     };
 
     return st;
@@ -78,7 +81,7 @@ int nf9_get_field(const nf9_parse_result* pr, int flowset, int flownum,
         return 1;
     if (pr->flowsets[flowset].flows[flownum].count(field) == 0)
         return 1;
-    const std::vector<uint8_t>& value =
+    const pmr::vector<uint8_t>& value =
         pr->flowsets[flowset].flows[flownum].at(field);
 
     if (*length < value.size())
@@ -99,7 +102,7 @@ int nf9_get_option(const nf9_parse_result* pr, nf9_field field, void* dst,
     if (pr->state->options.at(dev_id).options_flow.count(field) == 0)
         return 1;
 
-    const std::vector<uint8_t>& value =
+    const pmr::vector<uint8_t>& value =
         pr->state->options.at(dev_id).options_flow.at(field);
 
     if (*length < value.size())
@@ -120,7 +123,7 @@ const nf9_stats* nf9_get_stats(const nf9_state* state)
 {
     nf9_stats* stats = new nf9_stats;
     *stats = state->stats;
-    stats->memory_usage = state->limited_mr->get_memory_usage();
+    stats->memory_usage = state->memory->get_current();
     return stats;
 }
 
@@ -137,7 +140,7 @@ int nf9_get_stat(const nf9_stats* stats, int stat)
             return stats->malformed_packets;
         case NF9_STAT_MISSING_TEMPLATE_ERRORS:
             return stats->missing_template_errors;
-        case NF9_STAT_EXPIRED_TEMPLATES:
+        case NF9_STAT_EXPIRED_OBJECTS:
             return stats->expired_templates;
         case NF9_STAT_MEMORY_USAGE:
             return static_cast<int>(stats->memory_usage);
@@ -155,8 +158,7 @@ int nf9_ctl(nf9_state* state, int opt, long value)
     switch (opt) {
         case NF9_OPT_MAX_MEM_USAGE:
             if (value > 0) {
-                state->limited_mr->set_max_memory_usage(
-                    static_cast<size_t>(value));
+                state->memory->set_limit(static_cast<size_t>(value));
                 return 0;
             }
             else {

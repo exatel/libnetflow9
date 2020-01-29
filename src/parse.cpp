@@ -1,6 +1,7 @@
 #include "parse.h"
 #include <cassert>
 #include <cstring>
+#include "storage.h"
 
 struct flowset_header
 {
@@ -88,55 +89,6 @@ static bool parse_header(buffer& buf, netflow_header& hdr, uint32_t& timestamp,
     return true;
 }
 
-static int delete_expired_templates(uint32_t timestamp, nf9_state& state)
-{
-    int deleted_templates = 0;
-    uint32_t expiration_timestamp;
-    if (timestamp > state.template_expire_time)
-        expiration_timestamp = timestamp - state.template_expire_time;
-    else
-        expiration_timestamp = 0;
-
-    for (auto it = state.templates.begin(); it != state.templates.end();) {
-        if (it->second.timestamp <= expiration_timestamp) {
-            ++deleted_templates;
-            ++state.stats.expired_templates;
-            it = state.templates.erase(it);
-        }
-        else {
-            ++it;
-        }
-    }
-    return deleted_templates;
-}
-
-static bool save_template(data_template& tmpl, parsing_context& ctx,
-                          uint16_t tid)
-{
-    if (tmpl.total_length == 0)
-        return false;
-    stream_id sid = {device_id{ctx.srcaddr, ctx.source_id}, ntohs(tid)};
-    if (ctx.state.templates.count(sid) != 0 &&
-        (tmpl.timestamp < ctx.state.templates[sid].timestamp))
-        return false;
-
-    try {
-        ctx.state.templates[sid] = tmpl;
-    } catch (const std::bad_alloc&) {
-        int deleted = delete_expired_templates(ctx.result.timestamp, ctx.state);
-        if (deleted == 0)
-            return false;
-
-        try {
-            ctx.state.templates[sid] = tmpl;
-        } catch (const std::bad_alloc&) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
 static bool parse_template_field(buffer& buf, uint16_t& type, uint16_t& length)
 {
     if (!buf.get(&type, sizeof(type)))
@@ -187,7 +139,10 @@ static bool parse_data_template_flowset(parsing_context& ctx)
                 return false;
         }
 
-        if (!save_template(tmpl, ctx, header.template_id))
+        stream_id sid = {device_id{ctx.srcaddr, ctx.source_id},
+                         ntohs(header.template_id)};
+
+        if (!save_template(tmpl, sid, ctx.state, ctx.result))
             return false;
 
         ctx.result.flowsets.emplace_back(std::move(f));
@@ -251,7 +206,10 @@ static bool parse_option_template_flowset(parsing_context& ctx)
                                ctx.result.timestamp))
         return false;
 
-    if (!save_template(tmpl, ctx, header.template_id))
+    stream_id sid = {device_id{ctx.srcaddr, ctx.source_id},
+                     ntohs(header.template_id)};
+
+    if (!save_template(tmpl, sid, ctx.state, ctx.result))
         return false;
 
     ctx.result.flowsets.emplace_back(std::move(f));
@@ -259,28 +217,6 @@ static bool parse_option_template_flowset(parsing_context& ctx)
     // omit padding bytes
     ctx.buf.advance(ctx.buf.remaining());
     return true;
-}
-
-static int delete_expired_options(uint32_t timestamp, nf9_state& state)
-{
-    int deleted_flows = 0;
-    uint32_t expiration_timestamp;
-    if (timestamp > state.option_expire_time)
-        expiration_timestamp = timestamp - state.option_expire_time;
-    else
-        expiration_timestamp = 0;
-
-    for (auto it = state.options.begin(); it != state.options.end();) {
-        if (it->second.timestamp <= expiration_timestamp) {
-            ++deleted_flows;
-            ++state.stats.expired_templates;  // expired flows ?
-            it = state.options.erase(it);
-        }
-        else {
-            ++it;
-        }
-    }
-    return deleted_flows;
 }
 
 static bool parse_flow(parsing_context& ctx, data_template& tmpl,
@@ -308,7 +244,7 @@ static bool parse_flow(parsing_context& ctx, data_template& tmpl,
         if (field_length == 0)
             break;
 
-        std::vector<uint8_t> field_value(field_length, 0);
+        pmr::vector<uint8_t> field_value(field_length, 0);
         ctx.buf.get(field_value.data(), field_length);
 
         f[type] = field_value;
@@ -317,20 +253,8 @@ static bool parse_flow(parsing_context& ctx, data_template& tmpl,
     if (tmpl.is_option) {
         device_id dev_id = {ctx.srcaddr, ctx.source_id};
         device_options dev_opts = {f, ctx.result.timestamp};
-        try {
-            ctx.state.options[dev_id] = dev_opts;
-        } catch (const std::bad_alloc&) {
-            int deleted =
-                delete_expired_options(ctx.result.timestamp, ctx.state);
-            if (deleted == 0)
-                return false;
-
-            try {
-                ctx.state.options[dev_id] = dev_opts;
-            } catch (const std::bad_alloc&) {
-                return false;
-            }
-        }
+        if (!save_option(ctx.state, dev_id, dev_opts))
+            return false;
     }
 
     result.flows.emplace_back(std::move(f));

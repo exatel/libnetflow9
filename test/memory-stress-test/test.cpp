@@ -55,8 +55,6 @@ void print_stats(nf9_state* st)
     double reported_memusage =
         nf9_get_stat(stats, NF9_STAT_MEMORY_USAGE) / 1'000'000.0;
 
-    auto it = st->templates.get_allocator();
-
     std::cout << program_uptime << "s: actual=" << actual_memusage << "MB "
               << "reported=" << reported_memusage << "MB\n";
 
@@ -101,12 +99,7 @@ int main(int argc, char** argv)
 
         time_t t;
         if ((t = time(NULL)) > print_time) {
-            size_t count = 0;
-            for (unsigned i = 0; i < st->templates.bucket_count(); ++i) {
-                count++;
-            }
             print_stats(st);
-            std::cout << count << std::endl;
             print_time = t;
         }
     }
