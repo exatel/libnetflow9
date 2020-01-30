@@ -52,12 +52,12 @@ size_t nf9_get_num_flowsets(const nf9_parse_result* pr)
     return pr->flowsets.size();
 }
 
-int nf9_get_flowset_type(const nf9_parse_result* pr, int flowset)
+int nf9_get_flowset_type(const nf9_parse_result* pr, unsigned flowset)
 {
     return pr->flowsets[flowset].type;
 }
 
-size_t nf9_get_num_flows(const nf9_parse_result* pr, int flowset)
+size_t nf9_get_num_flows(const nf9_parse_result* pr, unsigned flowset)
 {
     return pr->flowsets[flowset].flows.size();
 }
@@ -72,8 +72,8 @@ uint32_t nf9_get_uptime(const nf9_parse_result* pr)
     return pr->system_uptime;
 }
 
-int nf9_get_field(const nf9_parse_result* pr, int flowset, int flownum,
-                  nf9_field field, void* dst, size_t* length)
+int nf9_get_field(const nf9_parse_result* pr, unsigned flowset,
+                  unsigned flownum, nf9_field field, void* dst, size_t* length)
 {
     if (flowset >= pr->flowsets.size())
         return 1;
@@ -127,7 +127,7 @@ const nf9_stats* nf9_get_stats(const nf9_state* state)
     return stats;
 }
 
-int nf9_get_stat(const nf9_stats* stats, int stat)
+uint64_t nf9_get_stat(const nf9_stats* stats, int stat)
 {
     switch (stat) {
         case NF9_STAT_TOTAL_RECORDS:
@@ -143,7 +143,7 @@ int nf9_get_stat(const nf9_stats* stats, int stat)
         case NF9_STAT_EXPIRED_OBJECTS:
             return stats->expired_templates;
         case NF9_STAT_MEMORY_USAGE:
-            return static_cast<int>(stats->memory_usage);
+            return stats->memory_usage;
     }
     return 0;
 }

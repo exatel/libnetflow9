@@ -308,11 +308,12 @@ enum nf9_flowset_type {
     NF9_FLOWSET_DATA,
 };
 
-NF9_API int nf9_get_flowset_type(const nf9_parse_result* pr, int flowset);
+NF9_API int nf9_get_flowset_type(const nf9_parse_result* pr, unsigned flowset);
 
-NF9_API size_t nf9_get_num_flows(const nf9_parse_result* pr, int flowset);
-NF9_API int nf9_get_field(const nf9_parse_result* pr, int flowset, int flow,
-                          nf9_field field, void* dst, size_t* length);
+NF9_API size_t nf9_get_num_flows(const nf9_parse_result* pr, unsigned flowset);
+NF9_API int nf9_get_field(const nf9_parse_result* pr, unsigned flowset,
+                          unsigned flownum, nf9_field field, void* dst,
+                          size_t* length);
 NF9_API int nf9_get_option(const nf9_parse_result* pr, nf9_field field,
                            void* dst, size_t* length);
 
@@ -335,7 +336,7 @@ enum nf9_opt {
 
 typedef struct nf9_stats nf9_stats;
 NF9_API const nf9_stats* nf9_get_stats(const nf9_state* state);
-NF9_API int nf9_get_stat(const nf9_stats* stats, int stat);
+NF9_API uint64_t nf9_get_stat(const nf9_stats* stats, int stat);
 NF9_API void nf9_free_stats(const nf9_stats*);
 NF9_API int nf9_ctl(nf9_state* state, int opt, long value);
 

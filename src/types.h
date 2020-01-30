@@ -27,19 +27,19 @@ namespace pmr = std::experimental::pmr;
 
 struct nf9_stats
 {
-    int processed_packets = 0;
-    int malformed_packets = 0;
-    int records = 0;
-    int data_templates = 0;
-    int option_templates = 0;
-    int missing_template_errors = 0;
-    int expired_templates = 0;
+    unsigned processed_packets = 0;
+    unsigned malformed_packets = 0;
+    unsigned records = 0;
+    unsigned data_templates = 0;
+    unsigned option_templates = 0;
+    unsigned missing_template_errors = 0;
+    unsigned expired_templates = 0;
 
     size_t memory_usage = 0;
 };
 
-using template_field = std::pair<nf9_field, int>;
-using flow = pmr::unordered_map<int, pmr::vector<uint8_t>>;
+using template_field = std::pair<nf9_field, uint16_t>;
+using flow = pmr::unordered_map<nf9_field, pmr::vector<uint8_t>>;
 
 struct data_template
 {
@@ -109,20 +109,17 @@ struct stream_id
     uint16_t tid;
 };
 
-namespace std
-{
 template <>
-struct hash<stream_id>
+struct std::hash<stream_id>
 {
     size_t operator()(const stream_id &) const noexcept;
 };
 
 template <>
-struct hash<device_id>
+struct std::hash<device_id>
 {
     size_t operator()(const device_id &) const noexcept;
 };
-}  // namespace std
 
 bool operator==(const stream_id &, const stream_id &) noexcept;
 bool operator==(const device_id &, const device_id &) noexcept;
