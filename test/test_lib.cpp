@@ -1,3 +1,9 @@
+/*
+ * Copyright © 2019-2020 Exatel S.A.
+ * Contact: github@exatel.pl
+ * LICENSE: LGPL-3.0-or-later, See COPYING*.md files.
+ */
+
 #include "test_lib.h"
 
 std::vector<pcap_packet> get_packets(const char *pcap_path)
