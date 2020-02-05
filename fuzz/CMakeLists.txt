@@ -12,5 +12,5 @@ target_include_directories(netflowfuzz PRIVATE
   "../src"
   )
 target_link_libraries(netflowfuzz netflow9)
-target_compile_options(netflowfuzz PRIVATE "-fsanitize=fuzzer,address")
-target_link_options(netflowfuzz PRIVATE "-fsanitize=fuzzer,address")
+target_compile_options(netflowfuzz PRIVATE "-fsanitize=fuzzer,address,undefined")
+target_link_options(netflowfuzz PRIVATE "-fsanitize=fuzzer,address,undefined")
