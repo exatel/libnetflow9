@@ -69,15 +69,25 @@ struct parsing_context
     nf9_state& state;
 };
 
-static nf9_flowset_type get_flowset_type(const flowset_header& header)
+/*
+ * The FlowSet ID is used to distinguish template records from data records.
+ * FlowSet IDs in the range of 0-255 are reserved for template records.
+ * Currently, the template record that describes data fields has a FlowSet ID
+ * of zero and the template record that describes option fields has a FlowSet
+ * ID of 1. For this reason flowsets with Flowset IDs in the range of 2-255 are
+ * treated as invalid. A data record always has a nonzero FlowSet ID greater
+ * than 255.
+ */
+static nf9_flowset_type get_flowset_type(const uint16_t flowset_id)
 {
-    uint16_t id = ntohs(header.flowset_id);
-
-    if (id > 255)
+    if (flowset_id > 255)
         return NF9_FLOWSET_DATA;
-    else if (id == 1)
+    else if (flowset_id == 0)
+        return NF9_FLOWSET_TEMPLATE;
+    else if (flowset_id == 1)
         return NF9_FLOWSET_OPTIONS;
-    return NF9_FLOWSET_TEMPLATE;
+    else
+        return static_cast<nf9_flowset_type>(-1);
 }
 
 static bool parse_header(buffer& buf, netflow_header& hdr, uint32_t& timestamp,
@@ -326,7 +336,9 @@ static bool parse_flowset(parsing_context& context)
     parsing_context ctx = {tmpbuf, context.source_id, context.srcaddr,
                            context.result, context.state};
 
-    switch (get_flowset_type(header)) {
+    uint16_t flowset_id = ntohs(header.flowset_id);
+
+    switch (get_flowset_type(flowset_id)) {
         case NF9_FLOWSET_TEMPLATE:
             context.state.stats.data_templates++;
             return parse_data_template_flowset(ctx);
@@ -335,7 +347,7 @@ static bool parse_flowset(parsing_context& context)
             return parse_option_template_flowset(ctx);
         case NF9_FLOWSET_DATA:
             context.state.stats.records++;
-            return parse_data_flowset(ctx, ntohs(header.flowset_id));
+            return parse_data_flowset(ctx, flowset_id);
         default:
             context.state.stats.malformed_packets++;
             return false;

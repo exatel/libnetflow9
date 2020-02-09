@@ -170,7 +170,7 @@ TEST_F(test, recognizes_template_flowsets)
 {
     std::vector<uint8_t> packet =
         netflow_packet_builder()
-            .add_data_template_flowset(200)
+            .add_data_template_flowset(0)
             .add_data_template(400)
             .add_data_template_field(NF9_FIELD_IPV4_DST_ADDR, 4)
             .build();
@@ -181,6 +181,20 @@ TEST_F(test, recognizes_template_flowsets)
     ASSERT_NE(result, nullptr);
     ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
     ASSERT_EQ(nf9_get_flowset_type(result.get(), 0), NF9_FLOWSET_TEMPLATE);
+}
+
+TEST_F(test, invalid_template_flowset_id)
+{
+    std::vector<uint8_t> packet =
+        netflow_packet_builder()
+            .add_data_template_flowset(200)
+            .add_data_template(400)
+            .add_data_template_field(NF9_FIELD_IPV4_DST_ADDR, 4)
+            .build();
+
+    nf9_addr addr = make_inet_addr("192.168.0.123");
+    parse_result result = parse(packet.data(), packet.size(), &addr);
+    ASSERT_EQ(result, nullptr);
 }
 
 TEST_F(test, recognizes_option_flowsets)
@@ -273,7 +287,7 @@ TEST_F(test, multiple_data_templates)
 {
     std::vector<uint8_t> packet =
         netflow_packet_builder()
-            .add_data_template_flowset(200)
+            .add_data_template_flowset(0)
             .add_data_template(400)
             .add_data_template_field(NF9_FIELD_IPV4_SRC_ADDR, 4)
             .add_data_template(401)
@@ -439,7 +453,7 @@ TEST_F(test, try_to_add_too_many_templates)
     std::vector<uint8_t> packet;
     parse_result result;
     packet = netflow_packet_builder()
-                 .add_data_template_flowset(200)
+                 .add_data_template_flowset(0)
                  .add_data_template(400)
                  .add_data_template_field(NF9_FIELD_IPV4_SRC_ADDR, 4)
                  .add_data_template(401)
@@ -455,7 +469,7 @@ TEST_F(test, try_to_add_too_many_templates)
     ASSERT_EQ(nf9_ctl(state_, NF9_OPT_MAX_MEM_USAGE, memory_used), 0);
 
     packet = netflow_packet_builder()
-                 .add_data_template_flowset(201)
+                 .add_data_template_flowset(0)
                  .add_data_template(257)
                  .add_data_template_field(NF9_FIELD_IPV4_SRC_ADDR, 4)
                  .set_unix_timestamp(10000)
@@ -466,7 +480,7 @@ TEST_F(test, try_to_add_too_many_templates)
     EXPECT_EQ(state_->templates.size(), 2);
 
     packet = netflow_packet_builder()
-                 .add_data_template_flowset(202)
+                 .add_data_template_flowset(0)
                  .add_data_template(357)
                  .add_data_template_field(NF9_FIELD_IPV4_SRC_ADDR, 4)
                  .set_unix_timestamp(1000000)
