@@ -6,6 +6,7 @@
 
 #include "storage.h"
 #include <cassert>
+#include <mutex>
 
 void* limited_memory_resource::do_allocate(std::size_t bytes,
                                            std::size_t alignment)
@@ -109,6 +110,7 @@ bool save_template(data_template& tmpl, stream_id& sid, nf9_state& state,
 void assign_option(nf9_state& state, device_options& dev_opts,
                    device_id& dev_id)
 {
+    std::lock_guard<std::mutex> lock(state.options_mutex);
     state.options.insert_or_assign(
         dev_id, device_options{flow(flow::allocator_type(state.memory.get())),
                                dev_opts.timestamp});

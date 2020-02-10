@@ -7,6 +7,7 @@
 #include <netflow9.h>
 #include <netinet/in.h>
 #include <cstring>
+#include <mutex>
 #include <vector>
 #include "parse.h"
 #include "types.h"
@@ -26,6 +27,7 @@ nf9_state* nf9_init(int flags)
         pmr::unordered_map<stream_id, data_template>(addr),
         /*options=*/
         pmr::unordered_map<device_id, device_options>(addr),
+        /*options_mutex=*/{},
     };
 
     return st;
@@ -102,6 +104,7 @@ int nf9_get_field(const nf9_parse_result* pr, unsigned flowset,
 int nf9_get_option(const nf9_parse_result* pr, nf9_field field, void* dst,
                    size_t* length)
 {
+    std::lock_guard<std::mutex> lock(pr->state->options_mutex);
     device_id dev_id = {pr->addr, pr->src_id};
     if (pr->state->options.count(dev_id) == 0)
         return 1;

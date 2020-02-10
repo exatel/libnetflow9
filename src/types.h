@@ -10,6 +10,7 @@
 #include <netflow9.h>
 #include <netinet/in.h>
 #include <iostream>
+#include <mutex>
 
 #include "config.h"
 
@@ -140,6 +141,9 @@ struct nf9_state
 
     pmr::unordered_map<stream_id, data_template> templates;
     pmr::unordered_map<device_id, device_options> options;
+
+    /* Mutex for options unordered_map */
+    std::mutex options_mutex;
 };
 
 struct flowset
