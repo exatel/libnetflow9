@@ -113,8 +113,9 @@ void assign_option(nf9_state& state, device_options& dev_opts,
         dev_id, device_options{flow(flow::allocator_type(state.memory.get())),
                                dev_opts.timestamp});
     for (auto& [field, value] : dev_opts.options_flow) {
-        auto [inserted_value, _] = state.options[dev_id].options_flow.emplace(
-            field, pmr::vector<uint8_t>(state.memory.get()));
+        auto [inserted_value, _] =
+            state.options[dev_id].options_flow.insert_or_assign(
+                field, pmr::vector<uint8_t>(state.memory.get()));
         inserted_value->second.assign(value.begin(), value.end());
     }
 }
