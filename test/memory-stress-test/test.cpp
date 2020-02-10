@@ -15,8 +15,9 @@
 // Memory stress test.
 //
 // This test program will create a `nf9_state' and set a memory usage limit via
-// `nf9_ctl'.  Then it will loop, feeding the state random templates,
-// printing actual and reported (by nf9_get_stat) memory usage to stdout.
+// `nf9_ctl'.  Then it will loop, feeding the state random templates and
+// options, printing actual and reported (by nf9_get_stat) memory usage to
+// stdout.
 //
 // *******************************************************************************
 
@@ -64,10 +65,16 @@ void print_stats(nf9_state* st)
 std::vector<uint8_t> generate_packet()
 {
     return netflow_packet_builder()
-        .add_data_template_flowset(random(0, 255))
+        .add_data_template_flowset(0)
         .add_data_template(uint16_t(random(256, 65536)))
         .add_data_template_field(NF9_FIELD_IPV4_SRC_ADDR, 4)
         .add_data_template_field(NF9_FIELD_IPV4_DST_ADDR, 4)
+        .add_option_template_flowset(444)
+        .add_option_field(NF9_FIELD_DIRECTION, 4)
+        .add_option_scope_field(1, 4)
+        .add_data_flowset(444)
+        .add_data_field(123)
+        .add_data_field(3)
         .build();
 }
 

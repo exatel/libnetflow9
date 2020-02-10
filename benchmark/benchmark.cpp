@@ -82,7 +82,44 @@ static void bm_nf9_parse_large_data_flowset(benchmark::State &state)
     nf9_free(st);
 }
 
+static void bm_nf9_options(benchmark::State &state)
+{
+    nf9_addr addr;
+    nf9_state *st = nf9_init(0);
+    nf9_parse_result *pr;
+    std::vector<uint8_t> packet;
+    netflow_packet_builder builder;
+
+    addr.family = AF_INET;
+    addr.in.sin_addr.s_addr = 123456;
+
+    // Build an option template
+    builder.add_option_template_flowset(444);
+    builder.add_option_field(NF9_FIELD_IPV4_DST_ADDR, 4);
+
+    packet = builder.build();
+    nf9_parse(st, &pr, packet.data(), packet.size(), &addr);
+
+    // Now build a data flowset with options
+    builder = netflow_packet_builder();
+    builder.add_data_flowset(444);
+    builder.add_data_field(uint32_t(12345));
+
+    packet = builder.build();
+
+    for (auto _ : state) {
+        nf9_parse(st, &pr, packet.data(), packet.size(), &addr);
+
+        uint32_t tmp;
+        size_t size = sizeof(tmp);
+        nf9_get_option(pr, NF9_FIELD_IPV4_DST_ADDR, &tmp, &size);
+        nf9_free_parse_result(pr);
+    }
+    nf9_free(st);
+}
+
 BENCHMARK(bm_nf9_parse);
 BENCHMARK(bm_nf9_parse_large_data_flowset);
+BENCHMARK(bm_nf9_options);
 
 BENCHMARK_MAIN();
