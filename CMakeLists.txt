@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 3.7)
-project(libnetflow CXX)
+project(libnetflow C CXX)
 
 option(NF9_MAKE_SHARED "If set, build a shared library version" ON)
 option(NF9_BUILD_TESTS "If set, build unit tests (requires googletest)" ON)
 option(NF9_FUZZ "Enable fuzzing with LLVM fuzzer" OFF)
 option(NF9_BUILD_BENCHMARK
   "If set, build benchmarks (requires google benchmark library)" OFF)
+option(NF9_BUILD_EXAMPLES "If set, build examples" OFF)
 
 include(CheckCXXCompilerFlag)
 include(CheckIncludeFileCXX)
@@ -89,4 +90,8 @@ endif()
 
 if (NF9_FUZZ)
   add_subdirectory(fuzz)
+endif ()
+
+if (NF9_BUILD_EXAMPLES)
+  add_subdirectory(examples)
 endif ()
