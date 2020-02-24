@@ -35,28 +35,6 @@
 extern "C" {
 #endif
 
-enum nf9_state_flags {
-    // NF9 reserved
-    NF9_THREAD_SAFE = 1,
-};
-typedef struct nf9_state nf9_state;
-
-NF9_API nf9_state* nf9_init(int flags);
-NF9_API void nf9_free(nf9_state* state);
-
-typedef struct nf9_parse_result nf9_parse_result;
-
-typedef union nf9_addr {
-    sa_family_t family;
-    struct sockaddr_in in;
-    struct sockaddr_in6 in6;
-} nf9_addr;
-
-NF9_API int nf9_parse(nf9_state* state, nf9_parse_result** result,
-                      const uint8_t* buf, size_t len, const nf9_addr* addr);
-
-NF9_API void nf9_free_parse_result(const nf9_parse_result* result);
-
 typedef uint32_t nf9_field;
 
 #ifdef __cplusplus
@@ -66,6 +44,40 @@ typedef uint32_t nf9_field;
 #define NF9_DATA_FIELD(value) ((nf9_field)value)
 #define NF9_SCOPE_FIELD(value) ((nf9_field)(value | (1 << 31)))
 #endif
+
+enum nf9_state_flag {
+    // NF9 reserved
+    NF9_THREAD_SAFE = 1,
+};
+
+enum nf9_flowset_type {
+    NF9_FLOWSET_TEMPLATE,
+    NF9_FLOWSET_OPTIONS,
+    NF9_FLOWSET_DATA,
+};
+
+enum nf9_stat {
+    NF9_STAT_PROCESSED_PACKETS,
+    NF9_STAT_MALFORMED_PACKETS,
+    NF9_STAT_TOTAL_RECORDS,
+    NF9_STAT_TOTAL_DATA_TEMPLATES,
+    NF9_STAT_TOTAL_OPTION_TEMPLATES,
+    NF9_STAT_MISSING_TEMPLATE_ERRORS,
+    NF9_STAT_EXPIRED_OBJECTS,
+    NF9_STAT_MEMORY_USAGE,
+};
+
+enum nf9_opt {
+    NF9_OPT_MAX_MEM_USAGE,
+    NF9_OPT_TEMPLATE_EXPIRE_TIME,
+    NF9_OPT_OPTION_EXPIRE_TIME,
+};
+
+typedef union nf9_addr {
+    sa_family_t family;
+    struct sockaddr_in in;
+    struct sockaddr_in6 in6;
+} nf9_addr;
 
 enum nf9_data_field {
     NF9_FIELD_F0 = NF9_DATA_FIELD(0),
@@ -315,16 +327,22 @@ enum nf9_scope_field {
     NF9_SCOPE_FIELD_TEMPLATE = NF9_SCOPE_FIELD(5),
 };
 
+typedef struct nf9_state nf9_state;
+typedef struct nf9_parse_result nf9_parse_result;
+typedef struct nf9_stats nf9_stats;
+
+NF9_API nf9_state* nf9_init(int flags);
+NF9_API void nf9_free(nf9_state* state);
+
+NF9_API int nf9_parse(nf9_state* state, nf9_parse_result** result,
+                      const uint8_t* buf, size_t len, const nf9_addr* addr);
+
+NF9_API void nf9_free_parse_result(const nf9_parse_result* result);
+
 NF9_API size_t nf9_get_num_flowsets(const nf9_parse_result* pr);
 
 NF9_API uint32_t nf9_get_timestamp(const nf9_parse_result* pr);
 NF9_API uint32_t nf9_get_uptime(const nf9_parse_result* pr);
-
-enum nf9_flowset_type {
-    NF9_FLOWSET_TEMPLATE,
-    NF9_FLOWSET_OPTIONS,
-    NF9_FLOWSET_DATA,
-};
 
 NF9_API int nf9_get_flowset_type(const nf9_parse_result* pr, unsigned flowset);
 
@@ -335,24 +353,6 @@ NF9_API int nf9_get_field(const nf9_parse_result* pr, unsigned flowset,
 NF9_API int nf9_get_option(const nf9_parse_result* pr, nf9_field field,
                            void* dst, size_t* length);
 
-enum nf9_stat_fields {
-    NF9_STAT_PROCESSED_PACKETS,
-    NF9_STAT_MALFORMED_PACKETS,
-    NF9_STAT_TOTAL_RECORDS,
-    NF9_STAT_TOTAL_DATA_TEMPLATES,
-    NF9_STAT_TOTAL_OPTION_TEMPLATES,
-    NF9_STAT_MISSING_TEMPLATE_ERRORS,
-    NF9_STAT_EXPIRED_OBJECTS,
-    NF9_STAT_MEMORY_USAGE,
-};
-
-enum nf9_opt {
-    NF9_OPT_MAX_MEM_USAGE,
-    NF9_OPT_TEMPLATE_EXPIRE_TIME,
-    NF9_OPT_OPTION_EXPIRE_TIME,
-};
-
-typedef struct nf9_stats nf9_stats;
 NF9_API const nf9_stats* nf9_get_stats(const nf9_state* state);
 NF9_API uint64_t nf9_get_stat(const nf9_stats* stats, int stat);
 NF9_API void nf9_free_stats(const nf9_stats*);
