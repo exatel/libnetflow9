@@ -45,34 +45,104 @@ typedef uint32_t nf9_field;
 #define NF9_SCOPE_FIELD(value) ((nf9_field)(value | (1 << 31)))
 #endif
 
+/**
+ * @brief Flags controlling behavior of a Netflow parser.
+ *
+ * These are static parser settings, they can only be set in the
+ * initializer.
+ */
 enum nf9_state_flag {
-    // NF9 reserved
-    NF9_THREAD_SAFE = 1,
+    _NF9_THREAD_SAFE = 1, /**< Reserved; don't use.  */
 };
 
+/**
+ * @brief Type of a Netflow flowset.
+ */
 enum nf9_flowset_type {
     NF9_FLOWSET_TEMPLATE,
     NF9_FLOWSET_OPTIONS,
     NF9_FLOWSET_DATA,
 };
 
+/**
+ * @brief Statistics of a Netflow parser.
+ */
 enum nf9_stat {
+
+    /**
+     * Total number of processed packets.
+     */
     NF9_STAT_PROCESSED_PACKETS,
+
+    /**
+     * Number of packets that were malformed.
+     */
     NF9_STAT_MALFORMED_PACKETS,
+
+    /**
+     * Number of all DATA flowsets.
+     */
     NF9_STAT_TOTAL_RECORDS,
+
+    /**
+     * Number of all data template flowsets.
+     */
     NF9_STAT_TOTAL_DATA_TEMPLATES,
+
+    /**
+     * Number of all option template flowsets.
+     */
     NF9_STAT_TOTAL_OPTION_TEMPLATES,
+
+    /**
+     * No. of times that templates were not found when parsing a data flowset.
+     */
     NF9_STAT_MISSING_TEMPLATE_ERRORS,
+
+    /**
+     * Number of times that data and options templates expired.
+     */
     NF9_STAT_EXPIRED_OBJECTS,
+
+    /**
+     * Current memory usage for storing template and options, in bytes.
+     */
     NF9_STAT_MEMORY_USAGE,
 };
 
+/**
+ * @brief Flags describing options of a Netflow parser.
+ */
 enum nf9_opt {
+
+    /**
+     * Memory limit in bytes for cached templates and options.
+     *
+     * @note This is an approximate value, real memory usage may be
+     * larger than what is set by this option.
+     */
     NF9_OPT_MAX_MEM_USAGE,
+
+    /**
+     * Duration (in seconds) that cached data templates are valid for.
+     *
+     * Parsing a data flowset that uses a template older than this
+     * many seconds results in a parsing error.
+     */
     NF9_OPT_TEMPLATE_EXPIRE_TIME,
+
+    /**
+     * Duration (in seconds) that options are valid for.
+     *
+     * This is like ::NF9_OPT_TEMPLATE_EXPIRE_TIME, but for option
+     * values.
+     */
     NF9_OPT_OPTION_EXPIRE_TIME,
 };
 
+/**
+ * @brief Holds the address of a device that generated a Netflow packet.
+ */
 typedef union nf9_addr {
     sa_family_t family;
     struct sockaddr_in in;
@@ -327,31 +397,171 @@ typedef struct nf9_state nf9_state;
 typedef struct nf9_parse_result nf9_parse_result;
 typedef struct nf9_stats nf9_stats;
 
+/**
+ * @brief Create a Netflow9 parser.
+ *
+ * The returned object holds Netflow templates and option values which
+ * are used to later parse data records.
+ *
+ * The @p flags argument is reserved and should always be zero.
+ *
+ * The returned object must be later freed with nf9_free().
+ *
+ * @param flags Reserved - always zero.
+ * @return An instance of the parser.
+ */
 NF9_API nf9_state* nf9_init(int flags);
+
+/**
+ * @brief Free a Netflow9 parser.
+ *
+ * @param state A state object created by nf9_init().
+ */
 NF9_API void nf9_free(nf9_state* state);
 
+/**
+ * @brief Parse a Netflow9 packet.
+ *
+ * @p buf must point to a buffer which contains Netflow data
+ * (e.g. received from a UDP socket), and @p addr must hold the
+ * address of the packet sender.
+ *
+ * On success, the pointer to a parse result is written to `*result`.
+ * It must later be freed with nf9_free_parse_result().  On failure,
+ * nothing is written to `*result`.
+ *
+ * @param state A state object created by nf9_init()
+ * @param[out] result Pointer to a result.  `*result` need not point to anything
+ * meaningful, the function will override it.
+ * @param buf Packet bytes.
+ * @param len Size of @p buf.
+ * @param addr Address of packet sender.
+ * @return 0 on success, any other value on failure.
+ */
 NF9_API int nf9_parse(nf9_state* state, nf9_parse_result** result,
                       const uint8_t* buf, size_t len, const nf9_addr* addr);
 
+/**
+ * @brief Free a parse result.
+ *
+ * @param result Result created in nf9_parse().
+ */
 NF9_API void nf9_free_parse_result(const nf9_parse_result* result);
 
+/**
+ * @brief Get the number of flowsets in a Netflow packet.
+ *
+ * @param pr Parsed Netflow packet, created by nf9_parse().
+ * @return Number of flowsets in @p pr.
+ */
 NF9_API size_t nf9_get_num_flowsets(const nf9_parse_result* pr);
 
+/**
+ * @brief Get the UNIX timestamp from a Netflow packet.
+ *
+ * @param pr Parsed Netflow packet, created by nf9_parse().
+ * @return UNIX timestamp in the Netflow header.
+ */
 NF9_API uint32_t nf9_get_timestamp(const nf9_parse_result* pr);
+
+/**
+ * @brief Get the system uptime in milliseconds from a Netflow packet.
+ *
+ * @param pr Parsed Netflow packet, created by nf9_parse().
+ * @return Uptime in milliseconds of the device that generated the packet.
+ */
 NF9_API uint32_t nf9_get_uptime(const nf9_parse_result* pr);
 
+/**
+ * @brief Get the type of flowset in a Netflow packet.
+ *
+ * @pre @p flowset must be < `nf9_get_num_flowsets(pr)`.
+ *
+ * @param pr Parsed Netflow packet, created with nf9_parse().
+ * @param flowset Index of the flowset.
+ * @return The flowset type - one of the values of enum ::nf9_flowset_type.
+ */
 NF9_API int nf9_get_flowset_type(const nf9_parse_result* pr, unsigned flowset);
 
+/**
+ * @brief Get the number of flows in a specific flowset in a Netflow packet.
+ *
+ * @pre @p flowset must be < `nf9_get_num_flowsets(pr)`.
+ *
+ * @param pr Parsed Netflow packet, created with nf9_parse().
+ * @param flowset The flowset index.
+ * @return Number of flows in the flowset.
+ */
 NF9_API size_t nf9_get_num_flows(const nf9_parse_result* pr, unsigned flowset);
+
+/**
+ * @brief Get the value of a field from a Netflow data record.
+ *
+ * @pre @p flowset must be < `nf9_get_num_flowsets(pr)`.
+ * @pre @p flow must be < `nf9_get_num_flows(pr, flowset)`.
+ *
+ * @param pr Parsed Netflow packet, created with nf9_parse().
+ * @param flowset Index of the flowset.
+ * @param flownum Index of the flow within the flowset.
+ * @param field The field ID - one of `NF9_FIELD_*`.
+ * @param[out] dst Pointer to a location where value of the field will be
+ * written.
+ * @param[in,out] length Initially points to size of @p dst.  On success,
+ * overwritten with number of bytes written to @p dst.
+ * @return 0 on success, any other value on failure.
+ */
 NF9_API int nf9_get_field(const nf9_parse_result* pr, unsigned flowset,
                           unsigned flownum, nf9_field field, void* dst,
                           size_t* length);
+
+/**
+ * @brief Get the value of an option from a Netflow packet.
+ *
+ * @param pr Parsed Netflow packet.
+ * @param field The option to get, one of `NF9_FIELD_*`.
+ * @param[out] dst Pointer to location where value of the option will be
+ * written.
+ * @param[in,out] length Initially points to size of @p dst.  On success,
+ * overwritten with number of bytes written to @p dst.
+ * @return 0 on success, any other value on failure.
+ */
 NF9_API int nf9_get_option(const nf9_parse_result* pr, nf9_field field,
                            void* dst, size_t* length);
 
+/**
+ * @brief Get statistics of a Netflow parser.
+ *
+ * The returned object must be freed with nf9_free_stats() when it's
+ * no longer used.
+ *
+ * @return An object which holds parser statistics.
+ */
 NF9_API const nf9_stats* nf9_get_stats(const nf9_state* state);
+
+/**
+ * @brief Get a specific statistic.
+ *
+ * @param stats Object returned by nf9_get_stats().
+ * @param stat The statistic to get, one of the values of enum ::nf9_stat.
+ * @return Value of the statistic.
+ */
 NF9_API uint64_t nf9_get_stat(const nf9_stats* stats, int stat);
-NF9_API void nf9_free_stats(const nf9_stats*);
+
+/**
+ * @brief Free Netflow parser statistics.
+ *
+ * @param stats Object returned from nf9_get_stats().
+ */
+NF9_API void nf9_free_stats(const nf9_stats* stats);
+
+/**
+ * @brief Set Netflow9 parser options.
+ *
+ * @param state Parser object created by nf9_init().
+ * @param opt The option to set (one of the values of enum ::nf9_opt).
+ * @param value The new value for the option.
+ * @return 0 on success, any other value on failure.
+ */
 NF9_API int nf9_ctl(nf9_state* state, int opt, long value);
 
 #ifdef __cplusplus
