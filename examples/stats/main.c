@@ -14,7 +14,7 @@
  * This example shows how you can get statistics from libnetflow.
  *
  * Like the simple example program, this program listens for UDP
- * packets on a port given on command line.  It parses the packets,
+ * packets on a port given on command line.  It decodes the packets,
  * and every second, prints the number of data templates, option
  * templates and flows that the library knows about.
  *
@@ -29,12 +29,12 @@ const char *usage =
     "Arguments:\n"
     " PORT   port to listen on for netflow data\n";
 
-/* Parse a received packet. */
-static void process(nf9_state *parser, const uint8_t *buf, size_t size,
+/* Decode a received packet. */
+static void process(nf9_state *decoder, const uint8_t *buf, size_t size,
                     const struct sockaddr_in *source);
 
 /* Print Netflow statistics: number of templates, option templates, etc. */
-static void print_stats(const nf9_state *parser);
+static void print_stats(const nf9_state *decoder);
 
 int main(int argc, char **argv)
 {
@@ -45,7 +45,7 @@ int main(int argc, char **argv)
     uint8_t buf[BUFSIZE];
     socklen_t addr_len;
     ssize_t len;
-    nf9_state *parser;
+    nf9_state *decoder;
     struct timeval timeout; /* timeout for `recvfrom' */
     time_t last_print_time; /* when did we last print statistics */
 
@@ -79,11 +79,11 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    /* Initialize the parser. */
-    parser = nf9_init(0);
+    /* Initialize the decoder. */
+    decoder = nf9_init(0);
 
     /* Set maximum memory usage. */
-    if (nf9_ctl(parser, NF9_OPT_MAX_MEM_USAGE, MAX_MEM_USAGE)) {
+    if (nf9_ctl(decoder, NF9_OPT_MAX_MEM_USAGE, MAX_MEM_USAGE)) {
         fprintf(stderr, "nf9_ctl failed");
         exit(EXIT_FAILURE);
     }
@@ -94,7 +94,7 @@ int main(int argc, char **argv)
         addr_len = sizeof(peer);
 
         if (time(NULL) > last_print_time) {
-            print_stats(parser);
+            print_stats(decoder);
             last_print_time = time(NULL);
         }
 
@@ -109,33 +109,33 @@ int main(int argc, char **argv)
             continue;
         }
 
-        /* Parse the received packet. */
-        process(parser, buf, len, &peer);
+        /* Decode the received packet. */
+        process(decoder, buf, len, &peer);
     }
 }
 
-void process(nf9_state *parser, const uint8_t *buf, size_t size,
+void process(nf9_state *decoder, const uint8_t *buf, size_t size,
              const struct sockaddr_in *source)
 {
-    nf9_parse_result *parse_result;
+    nf9_packet *packet;
     nf9_addr addr;
 
     addr.family = AF_INET;
     addr.in = *source;
 
-    if (nf9_parse(parser, &parse_result, buf, size, &addr)) {
-        fprintf(stderr, "parsing error\n");
+    if (nf9_decode(decoder, &packet, buf, size, &addr)) {
+        fprintf(stderr, "decoding error\n");
         return;
     }
 
-    nf9_free_parse_result(parse_result);
+    nf9_free_packet(packet);
 }
 
-void print_stats(const nf9_state *parser)
+void print_stats(const nf9_state *decoder)
 {
     const nf9_stats *stats;
 
-    stats = nf9_get_stats(parser);
+    stats = nf9_get_stats(decoder);
 
     printf(
         "templates: %lu option templates: %lu data records: %lu mem usage: "

@@ -1,7 +1,7 @@
 # libnetflow9 #
 
 Netflow is a protocol which concisely describes traffic information
-that traversed a network router.  libnetflow9 is a library for parsing
+that traversed a network router.  libnetflow9 is a library for decoding
 packets conforming to the Netflow9 format in order to extract meta
 information about the traffic.
 
@@ -78,13 +78,13 @@ The examples are located in `examples` directory:
 
 ## High level overview ##
 
-1. Create an instance of the parser: `nf9_init()`
+1. Create an instance of the decoder: `nf9_init()`
 2. Open a UDP socket and listen for Netflow packets
-3. Feed received packet to the parser: `nf9_parse()`.  This returns an
-   `nf9_parse_result`.
-4. Inspect the parse result - retrieve flow information, source
+3. Feed received packet to the decoder: `nf9_decode()`.  This returns an
+   `nf9_packet`.
+4. Inspect the packet - retrieve flow information, source
    address, destination address, bytes transferred etc.
-5. Delete the parse result (`nf9_free_parse_result()`) and go back to
+5. Delete the packet (`nf9_free_packet()`) and go back to
    step #3.
 6. Delete the state once you're done: `nf9_free()`.
 
@@ -94,7 +94,7 @@ The examples are located in `examples` directory:
 
 The library function prototypes are defined in `<netflow9.h>` header.
 
-### Creating the parser ###
+### Creating the decoder ###
 
 Netflow is a stateful protocol - in order to decode a packet you might
 need to have some of the previous packets, which contain templates for
@@ -108,12 +108,12 @@ nf9_state* state;
 state = nf9_init(0);
 ```
 
-### Setting parser options ###
+### Setting decoder options ###
 
-Once the parser is created, you can modify some of it's behavior,
+Once the decoder is created, you can modify some of it's behavior,
 e.g. for how long should decoded templates be considered valid.
 
-Use `nf9_ctl` function to set parser options:
+Use `nf9_ctl` function to set decoder options:
 
 ```c
 int nf9_ctl(nf9_state* state, int opt, long value);
@@ -131,29 +131,29 @@ nf9_ctl(state, NF9_OPT_MAX_MEM_USAGE, 4000);
 
 ### Receiving packets ###
 
-Now the parser is created and configured.  The library itself does not
+Now the decoder is created and configured.  The library itself does not
 deal with receiving the packets, you must do it yourself.
 
-**NOTE**: For parsing packets, you must also provide the source
+**NOTE**: For decoding packets, you must also provide the source
 address of the sender, so use `recvfrom` and friends.
 
-### Parsing the packet ###
+### Decoding the packet ###
 
-Use `nf9_parse` to decode the received packet:
+Use `nf9_decode` to decode the received packet:
 
 ```c
 uint8_t *packet_bytes;
 size_t packet_size;
 sockaddr_in peer;  /* packet sender */
-nf9_parse_result *parse_result;
+nf9_packet *packet;
 
-nf9_parse(state, &parse_result, packet_bytes, packet_size, &peer);
+nf9_decode(state, &packet, packet_bytes, packet_size, &peer);
 ```
 
-On success, `nf9_parse` returns 0 and writes pointer to heap-allocated
-result to `*parse_result`.
+On success, `nf9_decode` returns 0 and writes pointer to heap-allocated
+result to `*packet`.
 
-### Retrieving information from a parse result ###
+### Retrieving information from a packet ###
 
 #### Netflow packet structure ####
 
@@ -172,15 +172,15 @@ would take precious space if they were present in every DATA flowset.
 
 #### Getting to data ####
 
-With a parsed packet, we can iterate over the flowsets in it to find
+With a decoded packet, we can iterate over the flowsets in it to find
 DATA flowsets.
 
 ```c
 unsigned num_flowsets, num_flows;
-num_flowsets = nf9_get_num_flowsets(parse_result);
+num_flowsets = nf9_get_num_flowsets(packet);
 
 for (flowset = 0; flowset < num_flowsets; flowset++) {
-    if (nf9_get_flowset_type(parse_result, flowset) != NF9_FLOWSET_DATA)
+    if (nf9_get_flowset_type(packet, flowset) != NF9_FLOWSET_DATA)
         continue;
 
     /* found the DATA flowset */
@@ -193,7 +193,7 @@ Every DATA flowset is further divided into "flows" which describe
 traffic between specific hosts.  Iterate over them to get the details:
 
 ```c
-num_flows = nf9_get_num_flows(parse_result, flowset);
+num_flows = nf9_get_num_flows(packet, flowset);
 for (flownum = 0; flownum < num_flows; flownum++) {
     /* do something with the flow [flowset, flownum] */
 }
@@ -209,12 +209,12 @@ struct in_addr src, dst;
 size_t len;
 
 len = sizeof(src);
-if (nf9_get_field(parse_result, flowset, flownum, NF9_FIELD_IPV4_SRC_ADDR, &src, &len))
+if (nf9_get_field(packet, flowset, flownum, NF9_FIELD_IPV4_SRC_ADDR, &src, &len))
     /* source address is missing */
     continue;
 
 len = sizeof(dst);
-if (nf9_get_field(parse_result, flowset, flownum, NF9_FIELD_IPV4_DST_ADDR, &dst, &len))
+if (nf9_get_field(packet, flowset, flownum, NF9_FIELD_IPV4_DST_ADDR, &dst, &len))
     /* dest address is missing */
     continue;
 ```
@@ -225,7 +225,7 @@ To get the number of bytes:
 uint32_t in_bytes;
 
 len = sizeof(in_bytes);
-if (nf9_get_field(parse_result, flowset, flownum, NF9_FIELD_IN_BYTES, &in_bytes, &len))
+if (nf9_get_field(packet, flowset, flownum, NF9_FIELD_IN_BYTES, &in_bytes, &len))
     continue;
 
 /* All Netflow field values are in network byte order */
@@ -252,7 +252,7 @@ To access the cache and retrieve the sampling rate, use
 uint32_t sampling;
 
 len = sizeof(sampling);
-if (!nf9_get_option(parse_result, NF9_FIELD_FLOW_SAMPLER_RANDOM_INTERVAL, &sampling, &len))
+if (!nf9_get_option(packet, NF9_FIELD_FLOW_SAMPLER_RANDOM_INTERVAL, &sampling, &len))
     sampling = ntohl(sampling);
 else
     sampling = 1;
@@ -265,7 +265,7 @@ transferred:
 in_bytes *= sampling;
 ```
 
-### Getting statistics from the parser ###
+### Getting statistics from the decoder ###
 
 TODO
 

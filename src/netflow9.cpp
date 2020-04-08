@@ -9,7 +9,7 @@
 #include <cstring>
 #include <mutex>
 #include <vector>
-#include "parse.h"
+#include "decode.h"
 #include "types.h"
 
 nf9_state* nf9_init(int flags)
@@ -38,16 +38,16 @@ void nf9_free(nf9_state* state)
     delete state;
 }
 
-int nf9_parse(nf9_state* state, nf9_parse_result** result, const uint8_t* buf,
-              size_t len, const nf9_addr* addr)
+int nf9_decode(nf9_state* state, nf9_packet** result, const uint8_t* buf,
+               size_t len, const nf9_addr* addr)
 {
-    *result = new nf9_parse_result;
+    *result = new nf9_packet;
     (*result)->addr = *addr;
     (*result)->state = state;
 
-    if (!parse(buf, len, *addr, state, *result)) {
+    if (!decode(buf, len, *addr, state, *result)) {
         state->stats.malformed_packets++;
-        nf9_free_parse_result(*result);
+        nf9_free_packet(*result);
         *result = nullptr;
         return 1;
     }
@@ -55,42 +55,42 @@ int nf9_parse(nf9_state* state, nf9_parse_result** result, const uint8_t* buf,
     return 0;
 }
 
-size_t nf9_get_num_flowsets(const nf9_parse_result* pr)
+size_t nf9_get_num_flowsets(const nf9_packet* pkt)
 {
-    return pr->flowsets.size();
+    return pkt->flowsets.size();
 }
 
-int nf9_get_flowset_type(const nf9_parse_result* pr, unsigned flowset)
+int nf9_get_flowset_type(const nf9_packet* pkt, unsigned flowset)
 {
-    return pr->flowsets[flowset].type;
+    return pkt->flowsets[flowset].type;
 }
 
-size_t nf9_get_num_flows(const nf9_parse_result* pr, unsigned flowset)
+size_t nf9_get_num_flows(const nf9_packet* pkt, unsigned flowset)
 {
-    return pr->flowsets[flowset].flows.size();
+    return pkt->flowsets[flowset].flows.size();
 }
 
-uint32_t nf9_get_timestamp(const nf9_parse_result* pr)
+uint32_t nf9_get_timestamp(const nf9_packet* pkt)
 {
-    return pr->timestamp;
+    return pkt->timestamp;
 }
 
-uint32_t nf9_get_uptime(const nf9_parse_result* pr)
+uint32_t nf9_get_uptime(const nf9_packet* pkt)
 {
-    return pr->system_uptime;
+    return pkt->system_uptime;
 }
 
-int nf9_get_field(const nf9_parse_result* pr, unsigned flowset,
-                  unsigned flownum, nf9_field field, void* dst, size_t* length)
+int nf9_get_field(const nf9_packet* pkt, unsigned flowset, unsigned flownum,
+                  nf9_field field, void* dst, size_t* length)
 {
-    if (flowset >= pr->flowsets.size())
+    if (flowset >= pkt->flowsets.size())
         return 1;
-    if (flownum >= pr->flowsets[flowset].flows.size())
+    if (flownum >= pkt->flowsets[flowset].flows.size())
         return 1;
-    if (pr->flowsets[flowset].flows[flownum].count(field) == 0)
+    if (pkt->flowsets[flowset].flows[flownum].count(field) == 0)
         return 1;
     const pmr::vector<uint8_t>& value =
-        pr->flowsets[flowset].flows[flownum].at(field);
+        pkt->flowsets[flowset].flows[flownum].at(field);
 
     if (*length < value.size())
         return 1;
@@ -101,18 +101,18 @@ int nf9_get_field(const nf9_parse_result* pr, unsigned flowset,
     return 0;
 }
 
-int nf9_get_option(const nf9_parse_result* pr, nf9_field field, void* dst,
+int nf9_get_option(const nf9_packet* pkt, nf9_field field, void* dst,
                    size_t* length)
 {
-    std::lock_guard<std::mutex> lock(pr->state->options_mutex);
-    device_id dev_id = {pr->addr, pr->src_id};
-    if (pr->state->options.count(dev_id) == 0)
+    std::lock_guard<std::mutex> lock(pkt->state->options_mutex);
+    device_id dev_id = {pkt->addr, pkt->src_id};
+    if (pkt->state->options.count(dev_id) == 0)
         return 1;
-    if (pr->state->options.at(dev_id).options_flow.count(field) == 0)
+    if (pkt->state->options.at(dev_id).options_flow.count(field) == 0)
         return 1;
 
     const pmr::vector<uint8_t>& value =
-        pr->state->options.at(dev_id).options_flow.at(field);
+        pkt->state->options.at(dev_id).options_flow.at(field);
 
     if (*length < value.size())
         return 1;
@@ -123,9 +123,9 @@ int nf9_get_option(const nf9_parse_result* pr, nf9_field field, void* dst,
     return 0;
 }
 
-void nf9_free_parse_result(const nf9_parse_result* pr)
+void nf9_free_packet(const nf9_packet* pkt)
 {
-    delete pr;
+    delete pkt;
 }
 
 const nf9_stats* nf9_get_stats(const nf9_state* state)

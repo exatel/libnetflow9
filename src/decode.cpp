@@ -4,7 +4,7 @@
  * LICENSE: LGPL-3.0-or-later, See COPYING*.md files.
  */
 
-#include "parse.h"
+#include "decode.h"
 #include <cassert>
 #include <cstring>
 #include "storage.h"
@@ -60,12 +60,12 @@ struct buffer
     }
 };
 
-struct parsing_context
+struct context
 {
     buffer& buf;
     uint32_t source_id;
     const nf9_addr& srcaddr;
-    nf9_parse_result& result;
+    nf9_packet& result;
     nf9_state& state;
 };
 
@@ -90,8 +90,8 @@ static nf9_flowset_type get_flowset_type(const uint16_t flowset_id)
         return static_cast<nf9_flowset_type>(-1);
 }
 
-static bool parse_header(buffer& buf, netflow_header& hdr, uint32_t& timestamp,
-                         uint32_t& uptime)
+static bool decode_header(buffer& buf, netflow_header& hdr, uint32_t& timestamp,
+                          uint32_t& uptime)
 {
     if (!buf.get(&hdr, sizeof(hdr)))
         return false;
@@ -105,7 +105,7 @@ static bool parse_header(buffer& buf, netflow_header& hdr, uint32_t& timestamp,
     return true;
 }
 
-static bool parse_template_field(buffer& buf, uint16_t& type, uint16_t& length)
+static bool decode_template_field(buffer& buf, uint16_t& type, uint16_t& length)
 {
     if (!buf.get(&type, sizeof(type)))
         return false;
@@ -121,13 +121,13 @@ static bool parse_template_field(buffer& buf, uint16_t& type, uint16_t& length)
     return true;
 }
 
-static bool parse_data_template(buffer& buf, data_template& tmpl,
-                                nf9_parse_result& result)
+static bool decode_data_template(buffer& buf, data_template& tmpl,
+                                 nf9_packet& result)
 {
     uint16_t type;
     uint16_t length;
 
-    if (!parse_template_field(buf, type, length))
+    if (!decode_template_field(buf, type, length))
         return false;
 
     tmpl.fields.emplace_back(NF9_DATA_FIELD(type), length);
@@ -138,7 +138,7 @@ static bool parse_data_template(buffer& buf, data_template& tmpl,
     return true;
 }
 
-static bool parse_data_template_flowset(parsing_context& ctx)
+static bool decode_data_template_flowset(context& ctx)
 {
     while (ctx.buf.remaining() > 0) {
         data_template_header header;
@@ -151,7 +151,7 @@ static bool parse_data_template_flowset(parsing_context& ctx)
         uint16_t field_count = ntohs(header.field_count);
 
         while (field_count-- > 0 && ctx.buf.remaining() > 0) {
-            if (!parse_data_template(ctx.buf, tmpl, ctx.result))
+            if (!decode_data_template(ctx.buf, tmpl, ctx.result))
                 return false;
         }
 
@@ -166,15 +166,15 @@ static bool parse_data_template_flowset(parsing_context& ctx)
     return true;
 }
 
-static bool parse_option_template(buffer& buf, data_template& tmpl,
-                                  uint16_t option_scope_length,
-                                  uint16_t option_length, uint32_t timestamp)
+static bool decode_option_template(buffer& buf, data_template& tmpl,
+                                   uint16_t option_scope_length,
+                                   uint16_t option_length, uint32_t timestamp)
 {
     uint16_t type;
     uint16_t length;
 
     while (option_scope_length && buf.remaining() > 0) {
-        if (!parse_template_field(buf, type, length))
+        if (!decode_template_field(buf, type, length))
             return false;
         if (length == 0)
             return false;
@@ -188,7 +188,7 @@ static bool parse_option_template(buffer& buf, data_template& tmpl,
     }
 
     while (option_length && buf.remaining() > 0) {
-        if (!parse_template_field(buf, type, length))
+        if (!decode_template_field(buf, type, length))
             return false;
         if (length == 0)
             return false;
@@ -206,9 +206,9 @@ static bool parse_option_template(buffer& buf, data_template& tmpl,
     return true;
 }
 
-static bool parse_option_template_flowset(parsing_context& ctx)
+static bool decode_option_template_flowset(context& ctx)
 {
-    // TODO: Consider parsing flowsets with multiple option templates
+    // TODO: Consider decoding flowsets with multiple option templates
     option_template_header header;
     if (!ctx.buf.get(&header, sizeof(header)))
         return false;
@@ -217,9 +217,9 @@ static bool parse_option_template_flowset(parsing_context& ctx)
     f.type = NF9_FLOWSET_OPTIONS;
     data_template& tmpl = f.dtemplate;
 
-    if (!parse_option_template(ctx.buf, tmpl, ntohs(header.option_scope_length),
-                               ntohs(header.option_length),
-                               ctx.result.timestamp))
+    if (!decode_option_template(
+            ctx.buf, tmpl, ntohs(header.option_scope_length),
+            ntohs(header.option_length), ctx.result.timestamp))
         return false;
 
     stream_id sid = {device_id{ctx.srcaddr, ctx.source_id},
@@ -235,8 +235,7 @@ static bool parse_option_template_flowset(parsing_context& ctx)
     return true;
 }
 
-static bool parse_flow(parsing_context& ctx, data_template& tmpl,
-                       flowset& result)
+static bool decode_flow(context& ctx, data_template& tmpl, flowset& result)
 {
     if (tmpl.fields.empty()) {
         ctx.buf.advance(ctx.buf.remaining());
@@ -277,7 +276,7 @@ static bool parse_flow(parsing_context& ctx, data_template& tmpl,
     return true;
 }
 
-static bool parse_data_flowset(parsing_context& ctx, uint16_t flowset_id)
+static bool decode_data_flowset(context& ctx, uint16_t flowset_id)
 {
     stream_id sid = {device_id{ctx.srcaddr, ctx.source_id}, flowset_id};
 
@@ -302,7 +301,7 @@ static bool parse_data_flowset(parsing_context& ctx, uint16_t flowset_id)
     }
 
     while (ctx.buf.remaining() > 0) {
-        if (!parse_flow(ctx, tmpl, f))
+        if (!decode_flow(ctx, tmpl, f))
             return false;
     }
 
@@ -311,11 +310,11 @@ static bool parse_data_flowset(parsing_context& ctx, uint16_t flowset_id)
     return true;
 }
 
-static bool parse_flowset(parsing_context& context)
+static bool decode_flowset(context& ctx)
 {
     flowset_header header;
 
-    if (!context.buf.get(&header, sizeof(header)))
+    if (!ctx.buf.get(&header, sizeof(header)))
         return false;
 
     size_t flowset_length = ntohs(header.length);
@@ -327,29 +326,29 @@ static bool parse_flowset(parsing_context& context)
         return false;
 
     flowset_length -= sizeof(header);
-    if (flowset_length > context.buf.remaining())
+    if (flowset_length > ctx.buf.remaining())
         return false;
 
-    buffer tmpbuf{context.buf.ptr, flowset_length, context.buf.ptr};
-    context.buf.advance(flowset_length);
+    buffer tmpbuf{ctx.buf.ptr, flowset_length, ctx.buf.ptr};
+    ctx.buf.advance(flowset_length);
 
-    parsing_context ctx = {tmpbuf, context.source_id, context.srcaddr,
-                           context.result, context.state};
+    context sub_ctx = {tmpbuf, ctx.source_id, ctx.srcaddr, ctx.result,
+                       ctx.state};
 
     uint16_t flowset_id = ntohs(header.flowset_id);
 
     switch (get_flowset_type(flowset_id)) {
         case NF9_FLOWSET_TEMPLATE:
-            context.state.stats.data_templates++;
-            return parse_data_template_flowset(ctx);
+            ctx.state.stats.data_templates++;
+            return decode_data_template_flowset(sub_ctx);
         case NF9_FLOWSET_OPTIONS:
-            context.state.stats.option_templates++;
-            return parse_option_template_flowset(ctx);
+            ctx.state.stats.option_templates++;
+            return decode_option_template_flowset(sub_ctx);
         case NF9_FLOWSET_DATA:
-            context.state.stats.records++;
-            return parse_data_flowset(ctx, flowset_id);
+            ctx.state.stats.records++;
+            return decode_data_flowset(sub_ctx, flowset_id);
         default:
-            context.state.stats.malformed_packets++;
+            ctx.state.stats.malformed_packets++;
             return false;
     }
 
@@ -357,23 +356,22 @@ static bool parse_flowset(parsing_context& context)
     assert(0);
 }
 
-bool parse(const uint8_t* data, size_t len, const nf9_addr& srcaddr,
-           nf9_state* state, nf9_parse_result* result)
+bool decode(const uint8_t* data, size_t len, const nf9_addr& srcaddr,
+            nf9_state* state, nf9_packet* result)
 {
     buffer buf{data, len, data};
     netflow_header header;
 
-    if (!parse_header(buf, header, result->timestamp, result->system_uptime))
+    if (!decode_header(buf, header, result->timestamp, result->system_uptime))
         return false;
 
     result->src_id = ntohl(header.source_id);
 
-    parsing_context context = {buf, ntohl(header.source_id), srcaddr, *result,
-                               *state};
+    context ctx = {buf, ntohl(header.source_id), srcaddr, *result, *state};
 
     size_t num_flowsets = ntohs(header.count);
     for (size_t i = 0; i < num_flowsets && buf.remaining() > 0; ++i) {
-        if (!parse_flowset(context))
+        if (!decode_flowset(ctx))
             return false;
     }
 

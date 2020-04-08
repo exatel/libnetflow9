@@ -99,10 +99,10 @@ int main(int argc, char** argv)
 
     while (true) {
         std::vector<uint8_t> packet = generate_packet();
-        nf9_parse_result* pr;
-        if (!nf9_parse(st, &pr, packet.data(), packet.size(),
-                       generate_address()))
-            nf9_free_parse_result(pr);
+        nf9_packet* pkt;
+        if (!nf9_decode(st, &pkt, packet.data(), packet.size(),
+                        generate_address()))
+            nf9_free_packet(pkt);
 
         time_t t;
         if ((t = time(NULL)) > print_time) {

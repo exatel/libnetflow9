@@ -78,7 +78,7 @@ void assign_template(nf9_state& state, data_template& tmpl, stream_id& sid)
 }
 
 bool save_template(data_template& tmpl, stream_id& sid, nf9_state& state,
-                   nf9_parse_result& result)
+                   nf9_packet& result)
 {
     if (tmpl.total_length == 0)
         return false;

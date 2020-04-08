@@ -13,7 +13,7 @@
  * information about IPv4 flows.
  *
  * The program receives UDP packets on port provided on the command
- * line, parses each packet, and for every flow inside the packet,
+ * line, decodes each packet, and for every flow inside the packet,
  * prints the number of bytes and the source and destination addresses.
  *
  * */
@@ -34,13 +34,13 @@ struct flow
     size_t bytes;
 };
 
-/* Parse a received packet and print info about the flows inside it. */
-static void process_netflow_packet(nf9_state *parser, const uint8_t *buf,
+/* Decode a received packet and print info about the flows inside it. */
+static void process_netflow_packet(nf9_state *decoder, const uint8_t *buf,
                                    size_t size,
                                    const struct sockaddr_in *source);
 
-/* Extract a flow from a parse result.  Returns 0 on success. */
-static int extract_flow(struct flow *flow, const nf9_parse_result *pr,
+/* Extract a flow from a packet.  Returns 0 on success. */
+static int extract_flow(struct flow *flow, const nf9_packet *pkt,
                         unsigned flowset, unsigned flownum);
 
 /* Print given flow to stdout. */
@@ -55,7 +55,7 @@ int main(int argc, char **argv)
     uint8_t buf[BUFSIZE];
     socklen_t addr_len;
     ssize_t len;
-    nf9_state *parser;
+    nf9_state *decoder;
 
     if (argc != 2) {
         fprintf(stderr, usage, argv[0]);
@@ -80,11 +80,11 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    /* Initialize the parser. */
-    parser = nf9_init(0);
+    /* Initialize the decoder. */
+    decoder = nf9_init(0);
 
     /* Set maximum memory usage. */
-    if (nf9_ctl(parser, NF9_OPT_MAX_MEM_USAGE, MAX_MEM_USAGE)) {
+    if (nf9_ctl(decoder, NF9_OPT_MAX_MEM_USAGE, MAX_MEM_USAGE)) {
         fprintf(stderr, "nf9_ctl failed");
         exit(EXIT_FAILURE);
     }
@@ -105,15 +105,15 @@ int main(int argc, char **argv)
             continue;
         }
 
-        /* Parse the received packet. */
-        process_netflow_packet(parser, buf, len, &peer);
+        /* Decode the received packet. */
+        process_netflow_packet(decoder, buf, len, &peer);
     }
 }
 
-void process_netflow_packet(nf9_state *parser, const uint8_t *buf, size_t size,
+void process_netflow_packet(nf9_state *decoder, const uint8_t *buf, size_t size,
                             const struct sockaddr_in *source)
 {
-    nf9_parse_result *parse_result;
+    nf9_packet *packet;
     nf9_addr addr;
     size_t num_flowsets, num_flows;
     unsigned flowset, flownum;
@@ -124,9 +124,9 @@ void process_netflow_packet(nf9_state *parser, const uint8_t *buf, size_t size,
     addr.family = AF_INET;
     addr.in = *source;
 
-    /* Parse the packet. */
-    if (nf9_parse(parser, &parse_result, buf, size, &addr)) {
-        fprintf(stderr, "parsing error\n");
+    /* Decode the packet. */
+    if (nf9_decode(decoder, &packet, buf, size, &addr)) {
+        fprintf(stderr, "decoding error\n");
         return;
     }
 
@@ -148,32 +148,32 @@ void process_netflow_packet(nf9_state *parser, const uint8_t *buf, size_t size,
      * */
 
     /* Iterate over every flowset. */
-    num_flowsets = nf9_get_num_flowsets(parse_result);
+    num_flowsets = nf9_get_num_flowsets(packet);
     for (flowset = 0; flowset < num_flowsets; flowset++) {
         /* We are only interested in DATA flowsets. */
-        if (nf9_get_flowset_type(parse_result, flowset) != NF9_FLOWSET_DATA)
+        if (nf9_get_flowset_type(packet, flowset) != NF9_FLOWSET_DATA)
             continue;
 
-        num_flows = nf9_get_num_flows(parse_result, flowset);
+        num_flows = nf9_get_num_flows(packet, flowset);
         for (flownum = 0; flownum < num_flows; flownum++) {
-            if (extract_flow(&flow, parse_result, flowset, flownum))
+            if (extract_flow(&flow, packet, flowset, flownum))
                 continue;
 
             print_flow(&flow);
         }
     }
 
-    /* Once we're done with the packet, we must free the parse result. */
-    nf9_free_parse_result(parse_result);
+    /* Once we're done with the packet, we must free the packet. */
+    nf9_free_packet(packet);
 }
 
-int extract_flow(struct flow *flow, const nf9_parse_result *pr,
+int extract_flow(struct flow *flow, const nf9_packet *pkt,
                  unsigned flowset, unsigned flownum)
 {
     uint32_t sampling;
     size_t len;
 
-    /* We need to extract these things from the parsed packet:
+    /* We need to extract these things from the decoded packet:
      *
      * - the source and destination addresses
      * - the number of bytes transferred
@@ -188,25 +188,25 @@ int extract_flow(struct flow *flow, const nf9_parse_result *pr,
 
     /* Get the source address. */
     len = sizeof(flow->src);
-    if (nf9_get_field(pr, flowset, flownum, NF9_FIELD_IPV4_SRC_ADDR, &flow->src,
+    if (nf9_get_field(pkt, flowset, flownum, NF9_FIELD_IPV4_SRC_ADDR, &flow->src,
                       &len))
         return 1;
 
     /* Get the destination address. */
     len = sizeof(flow->dst);
-    if (nf9_get_field(pr, flowset, flownum, NF9_FIELD_IPV4_DST_ADDR, &flow->dst,
+    if (nf9_get_field(pkt, flowset, flownum, NF9_FIELD_IPV4_DST_ADDR, &flow->dst,
                       &len))
         return 1;
 
     /* Get the number of bytes. */
     len = sizeof(flow->bytes);
-    if (nf9_get_field(pr, flowset, flownum, NF9_FIELD_IN_BYTES, &flow->bytes,
+    if (nf9_get_field(pkt, flowset, flownum, NF9_FIELD_IN_BYTES, &flow->bytes,
                       &len))
         return 1;
 
     /* And the multiplier for the number of bytes - which defaults to 1. */
     len = sizeof(sampling);
-    if (!nf9_get_option(pr, NF9_FIELD_FLOW_SAMPLER_RANDOM_INTERVAL, &sampling,
+    if (!nf9_get_option(pkt, NF9_FIELD_FLOW_SAMPLER_RANDOM_INTERVAL, &sampling,
                         &len))
         /* Netflow data is in network byte order. */
         sampling = ntohl(sampling);

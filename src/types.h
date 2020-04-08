@@ -158,7 +158,7 @@ struct flowset
     std::vector<flow> flows;
 };
 
-struct nf9_parse_result
+struct nf9_packet
 {
     std::vector<flowset> flowsets;
     nf9_addr addr;

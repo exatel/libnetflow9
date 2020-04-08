@@ -37,11 +37,11 @@ nf9_addr make_inet6_addr(const char *addr, uint16_t port = 0);
 // Convert a binary address to string.
 std::string address_to_string(const nf9_addr &addr);
 
-struct parse_result_deleter
+struct packet_deleter
 {
-    void operator()(nf9_parse_result *result)
+    void operator()(nf9_packet *result)
     {
-        nf9_free_parse_result(result);
+        nf9_free_packet(result);
     }
 };
 
@@ -53,7 +53,7 @@ struct stats_deleter
     }
 };
 
-using parse_result = std::unique_ptr<nf9_parse_result, parse_result_deleter>;
+using packet = std::unique_ptr<nf9_packet, packet_deleter>;
 using stats = std::unique_ptr<const nf9_stats, stats_deleter>;
 
 class test : public ::testing::Test
@@ -74,12 +74,12 @@ protected:
         return stats(nf9_get_stats(state_));
     }
 
-    parse_result parse(const uint8_t *buf, size_t len, const nf9_addr *addr)
+    packet decode(const uint8_t *buf, size_t len, const nf9_addr *addr)
     {
-        nf9_parse_result *pr;
-        if (nf9_parse(state_, &pr, buf, len, addr))
-            return parse_result(nullptr);
-        return parse_result(pr);
+        nf9_packet *pkt;
+        if (nf9_decode(state_, &pkt, buf, len, addr))
+            return packet(nullptr);
+        return packet(pkt);
     }
 
     nf9_state *state_;

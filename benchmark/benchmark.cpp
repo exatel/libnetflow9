@@ -27,7 +27,7 @@ std::vector<uint8_t> generate_packet()
         .build();
 }
 
-static void bm_nf9_parse(benchmark::State &state)
+static void bm_nf9_decode(benchmark::State &state)
 {
     for (auto _ : state) {
         nf9_addr addr;
@@ -37,21 +37,21 @@ static void bm_nf9_parse(benchmark::State &state)
         addr.in.sin_addr.s_addr = 123456;
 
         const std::vector<uint8_t> &pkt = generate_packet();
-        nf9_parse_result *pr;
-        nf9_parse(st, &pr, pkt.data(), pkt.size(), &addr);
-        nf9_free_parse_result(pr);
+        nf9_packet *pkt;
+        nf9_decode(st, &pkt, pkt.data(), pkt.size(), &addr);
+        nf9_free_packet(pkt);
 
         nf9_free(st);
     }
 }
 
-static void bm_nf9_parse_large_data_flowset(benchmark::State &state)
+static void bm_nf9_decode_large_data_flowset(benchmark::State &state)
 {
     const size_t NFIELDS = 1024;
 
     nf9_addr addr;
     nf9_state *st = nf9_init(0);
-    nf9_parse_result *pr;
+    nf9_packet *pkt;
     std::vector<uint8_t> packet;
     netflow_packet_builder builder;
 
@@ -65,7 +65,7 @@ static void bm_nf9_parse_large_data_flowset(benchmark::State &state)
         builder.add_data_template_field(NF9_FIELD_IPV4_DST_ADDR, 4);
 
     packet = builder.build();
-    nf9_parse(st, &pr, packet.data(), packet.size(), &addr);
+    nf9_decode(st, &pkt, packet.data(), packet.size(), &addr);
 
     // Now build a data flowset packet
     builder = netflow_packet_builder();
@@ -76,8 +76,8 @@ static void bm_nf9_parse_large_data_flowset(benchmark::State &state)
     packet = builder.build();
 
     for (auto _ : state) {
-        nf9_parse(st, &pr, packet.data(), packet.size(), &addr);
-        nf9_free_parse_result(pr);
+        nf9_decode(st, &pkt, packet.data(), packet.size(), &addr);
+        nf9_free_packet(pkt);
     }
     nf9_free(st);
 }
@@ -86,7 +86,7 @@ static void bm_nf9_options(benchmark::State &state)
 {
     nf9_addr addr;
     nf9_state *st = nf9_init(0);
-    nf9_parse_result *pr;
+    nf9_packet *pkt;
     std::vector<uint8_t> packet;
     netflow_packet_builder builder;
 
@@ -98,7 +98,7 @@ static void bm_nf9_options(benchmark::State &state)
     builder.add_option_field(NF9_FIELD_IPV4_DST_ADDR, 4);
 
     packet = builder.build();
-    nf9_parse(st, &pr, packet.data(), packet.size(), &addr);
+    nf9_decode(st, &pkt, packet.data(), packet.size(), &addr);
 
     // Now build a data flowset with options
     builder = netflow_packet_builder();
@@ -108,18 +108,18 @@ static void bm_nf9_options(benchmark::State &state)
     packet = builder.build();
 
     for (auto _ : state) {
-        nf9_parse(st, &pr, packet.data(), packet.size(), &addr);
+        nf9_decode(st, &pkt, packet.data(), packet.size(), &addr);
 
         uint32_t tmp;
         size_t size = sizeof(tmp);
-        nf9_get_option(pr, NF9_FIELD_IPV4_DST_ADDR, &tmp, &size);
-        nf9_free_parse_result(pr);
+        nf9_get_option(pkt, NF9_FIELD_IPV4_DST_ADDR, &tmp, &size);
+        nf9_free_packet(pkt);
     }
     nf9_free(st);
 }
 
-BENCHMARK(bm_nf9_parse);
-BENCHMARK(bm_nf9_parse_large_data_flowset);
+BENCHMARK(bm_nf9_decode);
+BENCHMARK(bm_nf9_decode_large_data_flowset);
 BENCHMARK(bm_nf9_options);
 
 BENCHMARK_MAIN();
