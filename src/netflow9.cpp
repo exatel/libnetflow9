@@ -28,6 +28,8 @@ nf9_state* nf9_init(int flags)
         /*options=*/
         pmr::unordered_map<device_id, device_options>(addr),
         /*options_mutex=*/{},
+        /*store_samplings=*/bool(flags & NF9_STORE_SAMPLING_RATES),
+        /*sampling_rates=*/pmr::unordered_map<sampler_id, uint32_t>(addr),
     };
 
     return st;
@@ -119,6 +121,33 @@ int nf9_get_option(const nf9_packet* pkt, nf9_field field, void* dst,
 
     memcpy(dst, value.data(), value.size());
     *length = value.size();
+
+    return 0;
+}
+
+int nf9_get_sampling_rate(const nf9_packet* pkt, unsigned flowset,
+                          unsigned flownum, uint32_t* sampling)
+{
+    const nf9_state* st = pkt->state;
+    if (!st->store_sampling_rates)
+        return 1;
+
+    // Get SAMPLER_ID from the flow
+    uint16_t stored_sid;
+    size_t len = sizeof(stored_sid);
+    if (nf9_get_field(pkt, flowset, flownum, NF9_FIELD_FLOW_SAMPLER_ID,
+                      &stored_sid, &len))
+        return 1;
+    stored_sid = ntohs(stored_sid);
+
+    // Lookup the value in stored sampling rates
+    device_id dev_id = {pkt->addr, pkt->src_id};
+    sampler_id sid = {dev_id, stored_sid};
+    if (st->sampling_rates.count(sid) == 0)
+        return 1;
+
+    uint32_t rate = st->sampling_rates.at(sid);
+    *sampling = rate;
 
     return 0;
 }
@@ -251,6 +280,22 @@ size_t std::hash<stream_id>::operator()(const stream_id& sid) const noexcept
 bool operator==(const stream_id& lhs, const stream_id& rhs) noexcept
 {
     if (!(lhs.dev_id == rhs.dev_id) || lhs.tid != rhs.tid)
+        return false;
+
+    return true;
+}
+
+size_t std::hash<sampler_id>::operator()(const sampler_id& sid) const noexcept
+{
+    size_t ret = std::hash<device_id>()(sid.did);
+    ret ^= std::hash<uint16_t>()(sid.sid);
+
+    return ret;
+}
+
+bool operator==(const sampler_id& lhs, const sampler_id& rhs) noexcept
+{
+    if (!(lhs.did == rhs.did) || lhs.sid != rhs.sid)
         return false;
 
     return true;

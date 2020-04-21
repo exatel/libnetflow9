@@ -616,3 +616,75 @@ TEST_F(test, obtain_options_data)
                        &sampling, &len),
         1);
 }
+
+TEST_F(test, storing_sampling_rates)
+{
+    const int option_template_id = 1000;
+    std::vector<uint8_t> packet_bytes;
+    nf9_addr addr = make_inet_addr("192.192.192.193");
+
+    // Option template
+    packet_bytes =
+        netflow_packet_builder()
+            .add_option_template_flowset(option_template_id)
+            .add_option_field(NF9_FIELD_FLOW_SAMPLER_ID, 2)
+            .add_option_field(NF9_FIELD_FLOW_SAMPLER_RANDOM_INTERVAL, 4)
+            .build();
+    decode(packet_bytes.data(), packet_bytes.size(), &addr);
+
+    // Option values
+    packet_bytes = netflow_packet_builder()
+                       .add_data_flowset(option_template_id)
+
+                       // First sampler with ID = 1 and rate = 100
+                       .add_data_field(htons(1))
+                       .add_data_field(htonl(100))
+                       // Sampler with ID = 2 and rate = 1000
+                       .add_data_field(htons(2))
+                       .add_data_field(htonl(1000))
+                       .build();
+    decode(packet_bytes.data(), packet_bytes.size(), &addr);
+
+    // Data template
+    packet_bytes = netflow_packet_builder()
+                       .add_data_template_flowset(0)
+                       .add_data_template(257)
+                       .add_data_template_field(NF9_FIELD_FLOW_SAMPLER_ID, 2)
+                       .add_data_template_field(NF9_FIELD_IN_BYTES, 4)
+                       .build();
+    decode(packet_bytes.data(), packet_bytes.size(), &addr);
+
+    // Example data flow.
+    packet_bytes = netflow_packet_builder()
+                       .add_data_flowset(257)
+
+                       // Flow with first sampler
+                       .add_data_field(htons(1))  // SamplerID: 1
+                       .add_data_field(htonl(55))
+                       // Flow with second sampler
+                       .add_data_field(htons(2))  // SamplerID: 2
+                       .add_data_field(htonl(555))
+                       // Flow with an undefined sampler
+                       .add_data_field(htons(1234))  // SamplerID: 1234
+                       .add_data_field(htonl(5555))
+
+                       .build();
+    packet pkt = decode(packet_bytes.data(), packet_bytes.size(), &addr);
+    ASSERT_NE(pkt, nullptr);
+
+    uint32_t sampling;
+
+    // Check sampling for first flow
+    int ret = nf9_get_sampling_rate(pkt.get(), 0, 0, &sampling);
+    ASSERT_EQ(ret, 0);
+    ASSERT_EQ(sampling, 100);
+
+    // Sampling for second flow
+    ret = nf9_get_sampling_rate(pkt.get(), 0, 1, &sampling);
+    ASSERT_EQ(ret, 0);
+    ASSERT_EQ(sampling, 1000);
+
+    // Undefined sampling
+    ret = nf9_get_sampling_rate(pkt.get(), 0, 2, &sampling);
+    ASSERT_EQ(ret, 1);
+}

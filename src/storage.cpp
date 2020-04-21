@@ -146,3 +146,13 @@ bool save_option(nf9_state& state, device_id& dev_id, device_options& dev_opts)
 
     return true;
 }
+
+bool save_sampling_rate(nf9_state& state, sampler_id sid, uint32_t rate)
+{
+    try {
+        state.sampling_rates.insert_or_assign(sid, rate);
+        return true;
+    } catch (const out_of_memory_error&) {
+        return false;
+    }
+}

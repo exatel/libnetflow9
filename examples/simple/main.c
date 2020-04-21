@@ -81,7 +81,7 @@ int main(int argc, char **argv)
     }
 
     /* Initialize the decoder. */
-    decoder = nf9_init(0);
+    decoder = nf9_init(NF9_STORE_SAMPLING_RATES);
 
     /* Set maximum memory usage. */
     if (nf9_ctl(decoder, NF9_OPT_MAX_MEM_USAGE, MAX_MEM_USAGE)) {
@@ -167,8 +167,8 @@ void process_netflow_packet(nf9_state *decoder, const uint8_t *buf, size_t size,
     nf9_free_packet(packet);
 }
 
-int extract_flow(struct flow *flow, const nf9_packet *pkt,
-                 unsigned flowset, unsigned flownum)
+int extract_flow(struct flow *flow, const nf9_packet *pkt, unsigned flowset,
+                 unsigned flownum)
 {
     uint32_t sampling;
     size_t len;
@@ -188,14 +188,14 @@ int extract_flow(struct flow *flow, const nf9_packet *pkt,
 
     /* Get the source address. */
     len = sizeof(flow->src);
-    if (nf9_get_field(pkt, flowset, flownum, NF9_FIELD_IPV4_SRC_ADDR, &flow->src,
-                      &len))
+    if (nf9_get_field(pkt, flowset, flownum, NF9_FIELD_IPV4_SRC_ADDR,
+                      &flow->src, &len))
         return 1;
 
     /* Get the destination address. */
     len = sizeof(flow->dst);
-    if (nf9_get_field(pkt, flowset, flownum, NF9_FIELD_IPV4_DST_ADDR, &flow->dst,
-                      &len))
+    if (nf9_get_field(pkt, flowset, flownum, NF9_FIELD_IPV4_DST_ADDR,
+                      &flow->dst, &len))
         return 1;
 
     /* Get the number of bytes. */
@@ -205,12 +205,7 @@ int extract_flow(struct flow *flow, const nf9_packet *pkt,
         return 1;
 
     /* And the multiplier for the number of bytes - which defaults to 1. */
-    len = sizeof(sampling);
-    if (!nf9_get_option(pkt, NF9_FIELD_FLOW_SAMPLER_RANDOM_INTERVAL, &sampling,
-                        &len))
-        /* Netflow data is in network byte order. */
-        sampling = ntohl(sampling);
-    else
+    if (nf9_get_sampling_rate(pkt, flowset, flownum, &sampling))
         sampling = 1;
 
     flow->bytes = ntohl(flow->bytes) * sampling;

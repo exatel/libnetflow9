@@ -105,8 +105,11 @@ function `nf9_init()`.
 
 ```c
 nf9_state* state;
-state = nf9_init(0);
+state = nf9_init(NF9_STORE_SAMPLING_RATES);
 ```
+
+We passed `NF9_STORE_SAMPLING_RATES` as flags to `nf9_init` so we can
+later retrieve the router sampling rates.
 
 ### Setting decoder options ###
 
@@ -232,7 +235,7 @@ if (nf9_get_field(packet, flowset, flownum, NF9_FIELD_IN_BYTES, &in_bytes, &len)
 in_bytes = ntohl(in_bytes);
 ```
 
-#### Extracting flow options ####
+#### The sampling rate ####
 
 The above is often not enough though, because for performance reasons
 routers typically sample only part of the traffic (one out of every N
@@ -245,17 +248,13 @@ whatever is in `NF9_FIELD_IN_BYTES` by the router's sampling rate.
 The sampling rate will typically not be present in the data flowset
 though, but in option flowsets, which the library will cache.
 
-To access the cache and retrieve the sampling rate, use
-`nf9_get_option`:
+To get the sampling rate, pass `NF9_STORE_SAMPLING_RATES` flag to
+`nf9_init()`, and retrieve it with:
 
 ```c
 uint32_t sampling;
 
-len = sizeof(sampling);
-if (!nf9_get_option(packet, NF9_FIELD_FLOW_SAMPLER_RANDOM_INTERVAL, &sampling, &len))
-    sampling = ntohl(sampling);
-else
-    sampling = 1;
+nf9_get_sampling_rate(packet, flowset, flownum, &sampling);
 ```
 
 And now to get the approximate value for the number of bytes
@@ -264,6 +263,10 @@ transferred:
 ```c
 in_bytes *= sampling;
 ```
+
+#### Extracting flow options ####
+
+TODO
 
 ### Getting statistics from the decoder ###
 

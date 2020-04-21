@@ -52,7 +52,13 @@ typedef uint32_t nf9_field;
  * initializer.
  */
 enum nf9_state_flag {
-    _NF9_THREAD_SAFE = 1, /**< Reserved; don't use.  */
+    _NF9_THREAD_SAFE = 1 /**< Reserved; don't use.  */,
+
+    /**
+     * If this flag is present, sampling rates are cached and can be retrieved
+     * with nf9_get_sampling_rate().
+     */
+    NF9_STORE_SAMPLING_RATES = 2,
 };
 
 /**
@@ -403,11 +409,9 @@ typedef struct nf9_stats nf9_stats;
  * The returned object holds Netflow templates and option values which
  * are used to later decode data records.
  *
- * The @p flags argument is reserved and should always be zero.
- *
  * The returned object must be later freed with nf9_free().
  *
- * @param flags Reserved - always zero.
+ * @param flags Bitmask of flags from enum ::nf9_state_flag.
  * @return An instance of the decoder.
  */
 NF9_API nf9_state* nf9_init(int flags);
@@ -527,6 +531,21 @@ NF9_API int nf9_get_field(const nf9_packet* pkt, unsigned flowset,
  */
 NF9_API int nf9_get_option(const nf9_packet* pkt, nf9_field field, void* dst,
                            size_t* length);
+
+/**
+ * @brief Get the sampling rate used for a flow within a Netflow packet.
+ *
+ * @pre @p flowset must be < `nf9_get_num_flowsets(pkt)`.
+ * @pre @p flow must be < `nf9_get_num_flows(pkt, flowset)`.
+ *
+ * @param pkt Decoded Netflow packet, created with nf9_decode().
+ * @param flowset Index of the flowset.
+ * @param flownum Index of the flow within the flowset.
+ * @param[out] sampling The sampling rate.
+ * @return 0 on success, any other value on failure.
+ */
+NF9_API int nf9_get_sampling_rate(const nf9_packet* pkt, unsigned flowset,
+                                  unsigned flownum, uint32_t* sampling);
 
 /**
  * @brief Get statistics of a Netflow decoder.

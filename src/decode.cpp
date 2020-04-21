@@ -7,6 +7,7 @@
 #include "decode.h"
 #include <cassert>
 #include <cstring>
+#include "sampling.h"
 #include "storage.h"
 
 struct flowset_header
@@ -270,6 +271,13 @@ static bool decode_flow(context& ctx, data_template& tmpl, flowset& result)
         device_options dev_opts = {f, ctx.result.timestamp};
         if (!save_option(ctx.state, dev_id, dev_opts))
             return false;
+
+        if (ctx.state.store_sampling_rates) {
+            // Save sampling rates if the user enabled that.
+
+            // FIXME: handle error once proper enums are defined.
+            save_sampling_info(ctx.state, f, dev_id);
+        }
     }
 
     result.flows.emplace_back(std::move(f));

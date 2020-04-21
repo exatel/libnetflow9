@@ -61,7 +61,7 @@ class test : public ::testing::Test
 protected:
     void SetUp() override
     {
-        state_ = nf9_init(0);
+        state_ = nf9_init(NF9_STORE_SAMPLING_RATES);
     }
 
     void TearDown() override

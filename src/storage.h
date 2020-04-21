@@ -21,4 +21,6 @@ bool save_template(data_template& tmpl, stream_id& sid, nf9_state& state,
 
 bool save_option(nf9_state& state, device_id& dev_id, device_options& dev_opts);
 
+bool save_sampling_rate(nf9_state& state, sampler_id sid, uint32_t rate);
+
 #endif
