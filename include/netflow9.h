@@ -1,6 +1,6 @@
 /*
  * Copyright © 2019-2020 Exatel S.A.
- * Contact: github@exatel.pl
+ * Contact: opensource@exatel.pl
  * LICENSE: LGPL-3.0-or-later, See COPYING*.md files.
  *
  * This program is free software: you can redistribute it and/or modify it under
