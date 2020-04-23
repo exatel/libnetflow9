@@ -1,3 +1,9 @@
+/*
+ * Copyright © 2019-2020 Exatel S.A.
+ * Contact: opensource@exatel.pl
+ * LICENSE: LGPL-3.0-or-later, See COPYING*.md files.
+ */
+
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netflow9.h>
