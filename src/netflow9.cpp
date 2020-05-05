@@ -46,6 +46,7 @@ int nf9_decode(nf9_state* state, nf9_packet** result, const uint8_t* buf,
     *result = new nf9_packet;
     (*result)->addr = *addr;
     (*result)->state = state;
+    state->stats.processed_packets++;
 
     if (!decode(buf, len, *addr, state, *result)) {
         state->stats.malformed_packets++;
@@ -168,14 +169,16 @@ const nf9_stats* nf9_get_stats(const nf9_state* state)
 uint64_t nf9_get_stat(const nf9_stats* stats, int stat)
 {
     switch (stat) {
+        case NF9_STAT_PROCESSED_PACKETS:
+            return stats->processed_packets;
+        case NF9_STAT_MALFORMED_PACKETS:
+            return stats->malformed_packets;
         case NF9_STAT_TOTAL_RECORDS:
             return stats->records;
         case NF9_STAT_TOTAL_DATA_TEMPLATES:
             return stats->data_templates;
         case NF9_STAT_TOTAL_OPTION_TEMPLATES:
             return stats->option_templates;
-        case NF9_STAT_MALFORMED_PACKETS:
-            return stats->malformed_packets;
         case NF9_STAT_MISSING_TEMPLATE_ERRORS:
             return stats->missing_template_errors;
         case NF9_STAT_EXPIRED_OBJECTS:

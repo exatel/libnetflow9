@@ -44,6 +44,8 @@ TEST_F(test, add_option_template_data)
     ASSERT_NE(result, nullptr);
     ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
     ASSERT_EQ(nf9_get_flowset_type(result.get(), 0), NF9_FLOWSET_OPTIONS);
+    stats st = get_stats();
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_PROCESSED_PACKETS), 1);
 
     // decode data with option template
     packet_bytes = netflow_packet_builder()
@@ -55,6 +57,8 @@ TEST_F(test, add_option_template_data)
     ASSERT_NE(result, nullptr);
     ASSERT_EQ(nf9_get_num_flowsets(result.get()), 1);
     ASSERT_EQ(nf9_get_num_flows(result.get(), 0), 1);
+    st = get_stats();
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_PROCESSED_PACKETS), 2);
 
     uint32_t system, vrf;
     size_t len = 4;
@@ -78,6 +82,7 @@ TEST_F(test, packet_too_short)
     packet result = decode(packet_bytes.data(), packet_bytes.size() - 1, &addr);
     stats st = get_stats();
     EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_MALFORMED_PACKETS), 1);
+    EXPECT_EQ(nf9_get_stat(st.get(), NF9_STAT_PROCESSED_PACKETS), 1);
     ASSERT_EQ(result, nullptr);
 }
 
