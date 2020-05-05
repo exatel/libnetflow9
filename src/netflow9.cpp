@@ -282,10 +282,7 @@ size_t std::hash<stream_id>::operator()(const stream_id& sid) const noexcept
 
 bool operator==(const stream_id& lhs, const stream_id& rhs) noexcept
 {
-    if (!(lhs.dev_id == rhs.dev_id) || lhs.tid != rhs.tid)
-        return false;
-
-    return true;
+    return lhs.dev_id == rhs.dev_id && lhs.tid == rhs.tid;
 }
 
 size_t std::hash<sampler_id>::operator()(const sampler_id& sid) const noexcept
@@ -298,8 +295,5 @@ size_t std::hash<sampler_id>::operator()(const sampler_id& sid) const noexcept
 
 bool operator==(const sampler_id& lhs, const sampler_id& rhs) noexcept
 {
-    if (!(lhs.did == rhs.did) || lhs.sid != rhs.sid)
-        return false;
-
-    return true;
+    return lhs.did == rhs.did && lhs.sid == rhs.sid;
 }
