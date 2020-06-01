@@ -12,7 +12,7 @@
 
 std::vector<uint8_t> generate_packet()
 {
-    uint16_t template_id = rand() % (1 << sizeof(uint16_t));
+    uint16_t template_id = rand() % (1 << 16);
     if (template_id <= 255)
         template_id = 256;
 
