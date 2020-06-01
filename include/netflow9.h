@@ -46,6 +46,21 @@ typedef uint32_t nf9_field;
 #endif
 
 /**
+ * @brief Error codes used in libnetflow.
+ */
+enum nf9_error {
+    NF9_ERR_INVALID_ARGUMENT = 1,
+
+    NF9_ERR_NOT_FOUND,
+
+    NF9_ERR_OUT_OF_MEMORY,
+
+    NF9_ERR_MALFORMED,
+
+    NF9_ERR_OUTDATED,
+};
+
+/**
  * @brief Flags controlling behavior of a Netflow decoder.
  *
  * These are static decoder settings, they can only be set in the
@@ -404,6 +419,16 @@ typedef struct nf9_packet nf9_packet;
 typedef struct nf9_stats nf9_stats;
 
 /**
+ * @brief Get an error message for an error code.
+ *
+ * The returned string mustn't be freed.
+ *
+ * @param err Error code.
+ * @return Error message.
+ */
+NF9_API const char* nf9_strerror(int err);
+
+/**
  * @brief Create a Netflow9 decoder.
  *
  * The returned object holds Netflow templates and option values which
@@ -440,7 +465,7 @@ NF9_API void nf9_free(nf9_state* state);
  * @param buf Packet bytes.
  * @param len Size of @p buf.
  * @param addr Address of packet sender.
- * @return 0 on success, any other value on failure.
+ * @return 0 on success; on error, a value from enum ::nf9_error.
  */
 NF9_API int nf9_decode(nf9_state* state, nf9_packet** result,
                        const uint8_t* buf, size_t len, const nf9_addr* addr);
@@ -512,7 +537,7 @@ NF9_API size_t nf9_get_num_flows(const nf9_packet* pkt, unsigned flowset);
  * written.
  * @param[in,out] length Initially points to size of @p dst.  On success,
  * overwritten with number of bytes written to @p dst.
- * @return 0 on success, any other value on failure.
+ * @return 0 on success; on error, a value from enum ::nf9_error.
  */
 NF9_API int nf9_get_field(const nf9_packet* pkt, unsigned flowset,
                           unsigned flownum, nf9_field field, void* dst,
@@ -527,7 +552,7 @@ NF9_API int nf9_get_field(const nf9_packet* pkt, unsigned flowset,
  * written.
  * @param[in,out] length Initially points to size of @p dst.  On success,
  * overwritten with number of bytes written to @p dst.
- * @return 0 on success, any other value on failure.
+ * @return 0 on success; on error, a value from enum ::nf9_error.
  */
 NF9_API int nf9_get_option(const nf9_packet* pkt, nf9_field field, void* dst,
                            size_t* length);
@@ -542,7 +567,7 @@ NF9_API int nf9_get_option(const nf9_packet* pkt, nf9_field field, void* dst,
  * @param flowset Index of the flowset.
  * @param flownum Index of the flow within the flowset.
  * @param[out] sampling The sampling rate.
- * @return 0 on success, any other value on failure.
+ * @return 0 on success; on error, a value from enum ::nf9_error.
  */
 NF9_API int nf9_get_sampling_rate(const nf9_packet* pkt, unsigned flowset,
                                   unsigned flownum, uint32_t* sampling);
@@ -579,7 +604,7 @@ NF9_API void nf9_free_stats(const nf9_stats* stats);
  * @param state Decoder object created by nf9_init().
  * @param opt The option to set (one of the values of enum ::nf9_opt).
  * @param value The new value for the option.
- * @return 0 on success, any other value on failure.
+ * @return 0 on success; on error, a value from enum ::nf9_error.
  */
 NF9_API int nf9_ctl(nf9_state* state, int opt, long value);
 

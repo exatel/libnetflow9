@@ -12,6 +12,26 @@
 #include "decode.h"
 #include "types.h"
 
+const char* nf9_strerror(int err)
+{
+    switch (err) {
+        case 0:
+            return "success";
+        case NF9_ERR_INVALID_ARGUMENT:
+            return "invalid argument";
+        case NF9_ERR_NOT_FOUND:
+            return "field not found";
+        case NF9_ERR_OUT_OF_MEMORY:
+            return "out of memory";
+        case NF9_ERR_MALFORMED:
+            return "malformed packet";
+        case NF9_ERR_OUTDATED:
+            return "entity is outdated";
+        default:
+            return "unknown error";
+    }
+}
+
 nf9_state* nf9_init(int flags)
 {
     std::unique_ptr mr =
