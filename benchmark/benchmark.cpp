@@ -36,9 +36,9 @@ static void bm_nf9_decode(benchmark::State &state)
         addr.family = AF_INET;
         addr.in.sin_addr.s_addr = 123456;
 
-        const std::vector<uint8_t> &pkt = generate_packet();
+        const std::vector<uint8_t> &pkt_bytes = generate_packet();
         nf9_packet *pkt;
-        nf9_decode(st, &pkt, pkt.data(), pkt.size(), &addr);
+        nf9_decode(st, &pkt, pkt_bytes.data(), pkt_bytes.size(), &addr);
         nf9_free_packet(pkt);
 
         nf9_free(st);
@@ -99,6 +99,7 @@ static void bm_nf9_options(benchmark::State &state)
 
     packet = builder.build();
     nf9_decode(st, &pkt, packet.data(), packet.size(), &addr);
+    nf9_free_packet(pkt);
 
     // Now build a data flowset with options
     builder = netflow_packet_builder();
