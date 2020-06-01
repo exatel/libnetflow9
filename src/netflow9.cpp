@@ -68,11 +68,11 @@ int nf9_decode(nf9_state* state, nf9_packet** result, const uint8_t* buf,
     (*result)->state = state;
     state->stats.processed_packets++;
 
-    if (!decode(buf, len, *addr, state, *result)) {
+    if (int err = decode(buf, len, *addr, state, *result); err != 0) {
         state->stats.malformed_packets++;
         nf9_free_packet(*result);
         *result = nullptr;
-        return 1;
+        return err;
     }
 
     return 0;
@@ -107,16 +107,16 @@ int nf9_get_field(const nf9_packet* pkt, unsigned flowset, unsigned flownum,
                   nf9_field field, void* dst, size_t* length)
 {
     if (flowset >= pkt->flowsets.size())
-        return 1;
+        return NF9_ERR_INVALID_ARGUMENT;
     if (flownum >= pkt->flowsets[flowset].flows.size())
-        return 1;
+        return NF9_ERR_INVALID_ARGUMENT;
     if (pkt->flowsets[flowset].flows[flownum].count(field) == 0)
-        return 1;
+        return NF9_ERR_NOT_FOUND;
     const pmr::vector<uint8_t>& value =
         pkt->flowsets[flowset].flows[flownum].at(field);
 
     if (*length < value.size())
-        return 1;
+        return NF9_ERR_INVALID_ARGUMENT;
 
     memcpy(dst, value.data(), value.size());
     *length = value.size();
@@ -130,15 +130,15 @@ int nf9_get_option(const nf9_packet* pkt, nf9_field field, void* dst,
     std::lock_guard<std::mutex> lock(pkt->state->options_mutex);
     device_id dev_id = {pkt->addr, pkt->src_id};
     if (pkt->state->options.count(dev_id) == 0)
-        return 1;
+        return NF9_ERR_NOT_FOUND;
     if (pkt->state->options.at(dev_id).options_flow.count(field) == 0)
-        return 1;
+        return NF9_ERR_NOT_FOUND;
 
     const pmr::vector<uint8_t>& value =
         pkt->state->options.at(dev_id).options_flow.at(field);
 
     if (*length < value.size())
-        return 1;
+        return NF9_ERR_INVALID_ARGUMENT;
 
     memcpy(dst, value.data(), value.size());
     *length = value.size();
@@ -151,21 +151,21 @@ int nf9_get_sampling_rate(const nf9_packet* pkt, unsigned flowset,
 {
     const nf9_state* st = pkt->state;
     if (!st->store_sampling_rates)
-        return 1;
+        return NF9_ERR_NOT_FOUND;
 
     // Get SAMPLER_ID from the flow
     uint16_t stored_sid;
     size_t len = sizeof(stored_sid);
     if (nf9_get_field(pkt, flowset, flownum, NF9_FIELD_FLOW_SAMPLER_ID,
                       &stored_sid, &len))
-        return 1;
+        return NF9_ERR_NOT_FOUND;
     stored_sid = ntohs(stored_sid);
 
     // Lookup the value in stored sampling rates
     device_id dev_id = {pkt->addr, pkt->src_id};
     sampler_id sid = {dev_id, stored_sid};
     if (st->sampling_rates.count(sid) == 0)
-        return 1;
+        return NF9_ERR_NOT_FOUND;
 
     uint32_t rate = st->sampling_rates.at(sid);
     *sampling = rate;
@@ -223,7 +223,7 @@ int nf9_ctl(nf9_state* state, int opt, long value)
                 return 0;
             }
             else {
-                return 1;
+                return NF9_ERR_INVALID_ARGUMENT;
             }
         case NF9_OPT_TEMPLATE_EXPIRE_TIME:
             if (value > 0) {
@@ -231,7 +231,7 @@ int nf9_ctl(nf9_state* state, int opt, long value)
                 return 0;
             }
             else {
-                return 1;
+                return NF9_ERR_INVALID_ARGUMENT;
             }
         case NF9_OPT_OPTION_EXPIRE_TIME:
             if (value > 0) {
@@ -239,10 +239,10 @@ int nf9_ctl(nf9_state* state, int opt, long value)
                 return 0;
             }
             else {
-                return 1;
+                return NF9_ERR_INVALID_ARGUMENT;
             }
     }
-    return 1;
+    return NF9_ERR_INVALID_ARGUMENT;
 }
 
 size_t std::hash<device_id>::operator()(const device_id& dev_id) const noexcept

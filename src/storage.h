@@ -16,11 +16,11 @@ struct out_of_memory_error : public std::runtime_error
     using std::runtime_error::runtime_error;
 };
 
-bool save_template(data_template& tmpl, stream_id& sid, nf9_state& state,
-                   nf9_packet& result);
+int save_template(data_template& tmpl, stream_id& sid, nf9_state& state,
+                  nf9_packet& result);
 
-bool save_option(nf9_state& state, device_id& dev_id, device_options& dev_opts);
+int save_option(nf9_state& state, device_id& dev_id, device_options& dev_opts);
 
-bool save_sampling_rate(nf9_state& state, sampler_id sid, uint32_t rate);
+int save_sampling_rate(nf9_state& state, sampler_id sid, uint32_t rate);
 
 #endif

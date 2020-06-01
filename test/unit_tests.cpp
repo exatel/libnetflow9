@@ -449,7 +449,7 @@ TEST_F(test, data_template_with_lower_timestamp)
         0);
     ASSERT_EQ(
         nf9_get_field(result.get(), 0, 0, NF9_FIELD_IPV4_DST_ADDR, &dst, &len),
-        1);
+        NF9_ERR_NOT_FOUND);
     ASSERT_EQ(src, 875770417);
 }
 
@@ -619,7 +619,7 @@ TEST_F(test, obtain_options_data)
     ASSERT_EQ(
         nf9_get_option(result.get(), NF9_FIELD_FLOW_SAMPLER_RANDOM_INTERVAL,
                        &sampling, &len),
-        1);
+        NF9_ERR_NOT_FOUND);
 }
 
 TEST_F(test, storing_sampling_rates)
@@ -691,5 +691,5 @@ TEST_F(test, storing_sampling_rates)
 
     // Undefined sampling
     ret = nf9_get_sampling_rate(pkt.get(), 0, 2, &sampling);
-    ASSERT_EQ(ret, 1);
+    ASSERT_EQ(ret, NF9_ERR_NOT_FOUND);
 }

@@ -54,6 +54,7 @@ int main(int argc, char **argv)
     nf9_state *decoder;
     struct timeval timeout; /* timeout for `recvfrom' */
     time_t last_print_time; /* when did we last print statistics */
+    int err;
 
     if (argc != 2) {
         fprintf(stderr, usage, argv[0]);
@@ -89,8 +90,9 @@ int main(int argc, char **argv)
     decoder = nf9_init(0);
 
     /* Set maximum memory usage. */
-    if (nf9_ctl(decoder, NF9_OPT_MAX_MEM_USAGE, MAX_MEM_USAGE)) {
-        fprintf(stderr, "nf9_ctl failed");
+    err = nf9_ctl(decoder, NF9_OPT_MAX_MEM_USAGE, MAX_MEM_USAGE);
+    if (err != 0) {
+        fprintf(stderr, "nf9_ctl: %s\n", nf9_strerror(err));
         exit(EXIT_FAILURE);
     }
 
@@ -125,12 +127,14 @@ void process(nf9_state *decoder, const uint8_t *buf, size_t size,
 {
     nf9_packet *packet;
     nf9_addr addr;
+    int err;
 
     addr.family = AF_INET;
     addr.in = *source;
 
-    if (nf9_decode(decoder, &packet, buf, size, &addr)) {
-        fprintf(stderr, "decoding error\n");
+    err = nf9_decode(decoder, &packet, buf, size, &addr);
+    if (err != 0) {
+        fprintf(stderr, "nf9_decode: %s\n", nf9_strerror(err));
         return;
     }
 

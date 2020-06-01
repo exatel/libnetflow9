@@ -62,6 +62,7 @@ int main(int argc, char **argv)
     socklen_t addr_len;
     ssize_t len;
     nf9_state *decoder;
+    int err;
 
     if (argc != 2) {
         fprintf(stderr, usage, argv[0]);
@@ -90,8 +91,9 @@ int main(int argc, char **argv)
     decoder = nf9_init(NF9_STORE_SAMPLING_RATES);
 
     /* Set maximum memory usage. */
-    if (nf9_ctl(decoder, NF9_OPT_MAX_MEM_USAGE, MAX_MEM_USAGE)) {
-        fprintf(stderr, "nf9_ctl failed");
+    err = nf9_ctl(decoder, NF9_OPT_MAX_MEM_USAGE, MAX_MEM_USAGE);
+    if (err != 0) {
+        fprintf(stderr, "nf9_ctl: %s\n", nf9_strerror(err));
         exit(EXIT_FAILURE);
     }
 
@@ -124,6 +126,7 @@ void process_netflow_packet(nf9_state *decoder, const uint8_t *buf, size_t size,
     size_t num_flowsets, num_flows;
     unsigned flowset, flownum;
     struct flow flow;
+    int err;
 
     /* nf9_addr stores the IP address of the device that generated the
      * Netflow packet.  */
@@ -131,8 +134,9 @@ void process_netflow_packet(nf9_state *decoder, const uint8_t *buf, size_t size,
     addr.in = *source;
 
     /* Decode the packet. */
-    if (nf9_decode(decoder, &packet, buf, size, &addr)) {
-        fprintf(stderr, "decoding error\n");
+    err = nf9_decode(decoder, &packet, buf, size, &addr);
+    if (err != 0) {
+        fprintf(stderr, "nf9_decode: %s\n", nf9_strerror(err));
         return;
     }
 

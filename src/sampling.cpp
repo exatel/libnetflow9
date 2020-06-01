@@ -8,7 +8,7 @@
 #include <cstring>
 #include "storage.h"
 
-bool save_sampling_info(nf9_state& st, const flow& f, const device_id& did)
+int save_sampling_info(nf9_state& st, const flow& f, const device_id& did)
 {
     uint32_t rate;
     uint16_t sampler;
@@ -18,13 +18,13 @@ bool save_sampling_info(nf9_state& st, const flow& f, const device_id& did)
     // TODO: Consider SAMPLING_INTERVAL
     if (f.count(NF9_FIELD_FLOW_SAMPLER_RANDOM_INTERVAL) == 0 ||
         f.count(NF9_FIELD_FLOW_SAMPLER_ID) == 0)
-        return false;
+        return NF9_ERR_NOT_FOUND;
 
     // Extract the rate
     value_bytes = &f.at(NF9_FIELD_FLOW_SAMPLER_RANDOM_INTERVAL);
     if (value_bytes->size() != sizeof(rate)) {
         // TODO: Handle this error better.
-        return false;
+        return NF9_ERR_NOT_FOUND;
     }
     memcpy(static_cast<void*>(&rate),
            static_cast<const void*>(value_bytes->data()), value_bytes->size());
@@ -34,15 +34,16 @@ bool save_sampling_info(nf9_state& st, const flow& f, const device_id& did)
     value_bytes = &f.at(NF9_FIELD_FLOW_SAMPLER_ID);
     if (value_bytes->size() != sizeof(sampler)) {
         // TODO: Handle this error better.
-        return false;
+        return NF9_ERR_NOT_FOUND;
     }
     memcpy(static_cast<void*>(&sampler),
            static_cast<const void*>(value_bytes->data()), value_bytes->size());
     sampler = ntohs(sampler);
 
     // Now save the rate.
-    if (!save_sampling_rate(st, sampler_id{did, sampler}, rate))
-        return false;
+    if (int err = save_sampling_rate(st, sampler_id{did, sampler}, rate);
+        err != 0)
+        return err;
 
-    return true;
+    return 0;
 }

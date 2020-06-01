@@ -91,60 +91,60 @@ static nf9_flowset_type get_flowset_type(const uint16_t flowset_id)
         return static_cast<nf9_flowset_type>(-1);
 }
 
-static bool decode_header(buffer& buf, netflow_header& hdr, uint32_t& timestamp,
-                          uint32_t& uptime)
+static int decode_header(buffer& buf, netflow_header& hdr, uint32_t& timestamp,
+                         uint32_t& uptime)
 {
     if (!buf.get(&hdr, sizeof(hdr)))
-        return false;
+        return NF9_ERR_MALFORMED;
 
     if (ntohs(hdr.version) != 9)
-        return false;
+        return NF9_ERR_MALFORMED;
 
     timestamp = ntohl(hdr.timestamp);
     uptime = ntohl(hdr.uptime);
 
-    return true;
+    return 0;
 }
 
-static bool decode_template_field(buffer& buf, uint16_t& type, uint16_t& length)
+static int decode_template_field(buffer& buf, uint16_t& type, uint16_t& length)
 {
     if (!buf.get(&type, sizeof(type)))
-        return false;
+        return NF9_ERR_MALFORMED;
 
     if (!buf.get(&length, sizeof(length)))
-        return false;
+        return NF9_ERR_MALFORMED;
 
     type = ntohs(type);
     length = ntohs(length);
 
     if (length == 0)
-        return false;
-    return true;
+        return NF9_ERR_MALFORMED;
+    return 0;
 }
 
-static bool decode_data_template(buffer& buf, data_template& tmpl,
-                                 nf9_packet& result)
+static int decode_data_template(buffer& buf, data_template& tmpl,
+                                nf9_packet& result)
 {
     uint16_t type;
     uint16_t length;
 
-    if (!decode_template_field(buf, type, length))
-        return false;
+    if (int err = decode_template_field(buf, type, length); err != 0)
+        return err;
 
     tmpl.fields.emplace_back(NF9_DATA_FIELD(type), length);
     tmpl.total_length += length;
     tmpl.timestamp = result.timestamp;
     tmpl.is_option = false;
 
-    return true;
+    return 0;
 }
 
-static bool decode_data_template_flowset(context& ctx)
+static int decode_data_template_flowset(context& ctx)
 {
     while (ctx.buf.remaining() > 0) {
         data_template_header header;
         if (!ctx.buf.get(&header, sizeof(header)))
-            return false;
+            return NF9_ERR_MALFORMED;
 
         flowset f = flowset();
         f.type = NF9_FLOWSET_TEMPLATE;
@@ -152,100 +152,102 @@ static bool decode_data_template_flowset(context& ctx)
         uint16_t field_count = ntohs(header.field_count);
 
         while (field_count-- > 0 && ctx.buf.remaining() > 0) {
-            if (!decode_data_template(ctx.buf, tmpl, ctx.result))
-                return false;
+            if (int err = decode_data_template(ctx.buf, tmpl, ctx.result);
+                err != 0)
+                return err;
         }
 
         stream_id sid = {device_id{ctx.srcaddr, ctx.source_id},
                          ntohs(header.template_id)};
 
-        if (!save_template(tmpl, sid, ctx.state, ctx.result))
-            return false;
+        if (int err = save_template(tmpl, sid, ctx.state, ctx.result); err != 0)
+            return err;
 
         ctx.result.flowsets.emplace_back(std::move(f));
     }
-    return true;
+    return 0;
 }
 
-static bool decode_option_template(buffer& buf, data_template& tmpl,
-                                   uint16_t option_scope_length,
-                                   uint16_t option_length, uint32_t timestamp)
+static int decode_option_template(buffer& buf, data_template& tmpl,
+                                  uint16_t option_scope_length,
+                                  uint16_t option_length, uint32_t timestamp)
 {
     uint16_t type;
     uint16_t length;
 
     while (option_scope_length && buf.remaining() > 0) {
-        if (!decode_template_field(buf, type, length))
-            return false;
+        if (int err = decode_template_field(buf, type, length); err != 0)
+            return NF9_ERR_MALFORMED;
         if (length == 0)
-            return false;
+            return NF9_ERR_MALFORMED;
 
         nf9_field field_type = NF9_SCOPE_FIELD(type);
         tmpl.fields.emplace_back(field_type, length);
         tmpl.total_length += length;
         if (option_scope_length < sizeof(type) + sizeof(length))
-            return false;
+            return NF9_ERR_MALFORMED;
         option_scope_length -= sizeof(type) + sizeof(length);
     }
 
     while (option_length && buf.remaining() > 0) {
-        if (!decode_template_field(buf, type, length))
-            return false;
+        if (int err = decode_template_field(buf, type, length); err != 0)
+            return err;
         if (length == 0)
-            return false;
+            return NF9_ERR_MALFORMED;
 
         nf9_field field_type = NF9_DATA_FIELD(type);
         tmpl.fields.emplace_back(field_type, length);
         tmpl.total_length += length;
         if (option_length < sizeof(type) + sizeof(length))
-            return false;
+            return NF9_ERR_MALFORMED;
         option_length -= sizeof(type) + sizeof(length);
     }
     tmpl.timestamp = timestamp;
     tmpl.is_option = true;
 
-    return true;
+    return 0;
 }
 
-static bool decode_option_template_flowset(context& ctx)
+static int decode_option_template_flowset(context& ctx)
 {
     // TODO: Consider decoding flowsets with multiple option templates
     option_template_header header;
     if (!ctx.buf.get(&header, sizeof(header)))
-        return false;
+        return NF9_ERR_MALFORMED;
 
     flowset f = flowset();
     f.type = NF9_FLOWSET_OPTIONS;
     data_template& tmpl = f.dtemplate;
 
-    if (!decode_option_template(
+    if (int err = decode_option_template(
             ctx.buf, tmpl, ntohs(header.option_scope_length),
-            ntohs(header.option_length), ctx.result.timestamp))
-        return false;
+            ntohs(header.option_length), ctx.result.timestamp);
+        err != 0)
+        return err;
 
     stream_id sid = {device_id{ctx.srcaddr, ctx.source_id},
                      ntohs(header.template_id)};
 
-    if (!save_template(tmpl, sid, ctx.state, ctx.result))
-        return false;
+    if (int err = save_template(tmpl, sid, ctx.state, ctx.result); err != 0)
+        return err;
 
     ctx.result.flowsets.emplace_back(std::move(f));
 
     // omit padding bytes
     ctx.buf.advance(ctx.buf.remaining());
-    return true;
+    return 0;
 }
 
-static bool decode_flow(context& ctx, data_template& tmpl, flowset& result)
+static int decode_flow(context& ctx, data_template& tmpl, flowset& result)
 {
     if (tmpl.fields.empty()) {
         ctx.buf.advance(ctx.buf.remaining());
-        return true;
+        return 0;
     }
 
     if (tmpl.total_length > ctx.buf.remaining()) {
         ctx.buf.advance(ctx.buf.remaining());
-        return true;
+        return 0;
     }
 
     flow f = flow();
@@ -255,7 +257,7 @@ static bool decode_flow(context& ctx, data_template& tmpl, flowset& result)
         size_t field_length = tf.second;
 
         if (field_length > ctx.buf.remaining())
-            return false;
+            return NF9_ERR_MALFORMED;
 
         if (field_length == 0)
             break;
@@ -269,8 +271,8 @@ static bool decode_flow(context& ctx, data_template& tmpl, flowset& result)
     if (tmpl.is_option) {
         device_id dev_id = {ctx.srcaddr, ctx.source_id};
         device_options dev_opts = {f, ctx.result.timestamp};
-        if (!save_option(ctx.state, dev_id, dev_opts))
-            return false;
+        if (int err = save_option(ctx.state, dev_id, dev_opts); err != 0)
+            return err;
 
         if (ctx.state.store_sampling_rates) {
             // Save sampling rates if the user enabled that.
@@ -281,10 +283,10 @@ static bool decode_flow(context& ctx, data_template& tmpl, flowset& result)
     }
 
     result.flows.emplace_back(std::move(f));
-    return true;
+    return 0;
 }
 
-static bool decode_data_flowset(context& ctx, uint16_t flowset_id)
+static int decode_data_flowset(context& ctx, uint16_t flowset_id)
 {
     stream_id sid = {device_id{ctx.srcaddr, ctx.source_id}, flowset_id};
 
@@ -294,7 +296,7 @@ static bool decode_data_flowset(context& ctx, uint16_t flowset_id)
     if (ctx.state.templates.count(sid) == 0) {
         ++ctx.state.stats.missing_template_errors;
         ctx.buf.advance(ctx.buf.remaining());
-        return true;
+        return 0;
     }
 
     data_template& tmpl = ctx.state.templates[sid];
@@ -305,25 +307,25 @@ static bool decode_data_flowset(context& ctx, uint16_t flowset_id)
         ++ctx.state.stats.expired_templates;
         ctx.state.templates.erase(sid);
         ctx.buf.advance(ctx.buf.remaining());
-        return true;
+        return 0;
     }
 
     while (ctx.buf.remaining() > 0) {
-        if (!decode_flow(ctx, tmpl, f))
-            return false;
+        if (int err = decode_flow(ctx, tmpl, f); err != 0)
+            return err;
     }
 
     ctx.result.flowsets.emplace_back(std::move(f));
 
-    return true;
+    return 0;
 }
 
-static bool decode_flowset(context& ctx)
+static int decode_flowset(context& ctx)
 {
     flowset_header header;
 
     if (!ctx.buf.get(&header, sizeof(header)))
-        return false;
+        return NF9_ERR_MALFORMED;
 
     size_t flowset_length = ntohs(header.length);
 
@@ -331,11 +333,11 @@ static bool decode_flowset(context& ctx)
     // least two uint16_t fields: flowset_id and the length field
     // itself.
     if (flowset_length < sizeof(header))
-        return false;
+        return NF9_ERR_MALFORMED;
 
     flowset_length -= sizeof(header);
     if (flowset_length > ctx.buf.remaining())
-        return false;
+        return NF9_ERR_MALFORMED;
 
     buffer tmpbuf{ctx.buf.ptr, flowset_length, ctx.buf.ptr};
     ctx.buf.advance(flowset_length);
@@ -357,21 +359,23 @@ static bool decode_flowset(context& ctx)
             return decode_data_flowset(sub_ctx, flowset_id);
         default:
             ctx.state.stats.malformed_packets++;
-            return false;
+            return NF9_ERR_MALFORMED;
     }
 
     // Unreachable
     assert(0);
 }
 
-bool decode(const uint8_t* data, size_t len, const nf9_addr& srcaddr,
-            nf9_state* state, nf9_packet* result)
+int decode(const uint8_t* data, size_t len, const nf9_addr& srcaddr,
+           nf9_state* state, nf9_packet* result)
 {
     buffer buf{data, len, data};
     netflow_header header;
 
-    if (!decode_header(buf, header, result->timestamp, result->system_uptime))
-        return false;
+    if (int err = decode_header(buf, header, result->timestamp,
+                                result->system_uptime);
+        err != 0)
+        return NF9_ERR_MALFORMED;
 
     result->src_id = ntohl(header.source_id);
 
@@ -379,9 +383,9 @@ bool decode(const uint8_t* data, size_t len, const nf9_addr& srcaddr,
 
     size_t num_flowsets = ntohs(header.count);
     for (size_t i = 0; i < num_flowsets && buf.remaining() > 0; ++i) {
-        if (!decode_flowset(ctx))
-            return false;
+        if (int err = decode_flowset(ctx); err != 0)
+            return err;
     }
 
-    return true;
+    return 0;
 }

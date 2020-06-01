@@ -77,14 +77,14 @@ void assign_template(nf9_state& state, data_template& tmpl, stream_id& sid)
                  tmpl.is_option});
 }
 
-bool save_template(data_template& tmpl, stream_id& sid, nf9_state& state,
-                   nf9_packet& result)
+int save_template(data_template& tmpl, stream_id& sid, nf9_state& state,
+                  nf9_packet& result)
 {
     if (tmpl.total_length == 0)
-        return false;
+        return NF9_ERR_MALFORMED;
     if (state.templates.count(sid) != 0 &&
         (tmpl.timestamp < state.templates[sid].timestamp))
-        return false;
+        return NF9_ERR_OUTDATED;
 
     try {
         assign_template(state, tmpl, sid);
@@ -93,18 +93,18 @@ bool save_template(data_template& tmpl, stream_id& sid, nf9_state& state,
             delete_expired_objects(result.timestamp, state.template_expire_time,
                                    state.templates, state.stats);
         if (deleted == 0)
-            return false;
+            return NF9_ERR_OUT_OF_MEMORY;
 
         try {
             assign_template(state, tmpl, sid);
         } catch (const out_of_memory_error&) {
-            return false;
+            return NF9_ERR_OUT_OF_MEMORY;
         }
     }
     assert(state.templates[sid].fields.get_allocator().resource() ==
            state.memory.get());
 
-    return true;
+    return 0;
 }
 
 void assign_option(nf9_state& state, device_options& dev_opts,
@@ -122,7 +122,7 @@ void assign_option(nf9_state& state, device_options& dev_opts,
     }
 }
 
-bool save_option(nf9_state& state, device_id& dev_id, device_options& dev_opts)
+int save_option(nf9_state& state, device_id& dev_id, device_options& dev_opts)
 {
     try {
         assign_option(state, dev_opts, dev_id);
@@ -131,12 +131,12 @@ bool save_option(nf9_state& state, device_id& dev_id, device_options& dev_opts)
             delete_expired_objects(dev_opts.timestamp, state.option_expire_time,
                                    state.options, state.stats);
         if (deleted == 0)
-            return false;
+            return NF9_ERR_OUT_OF_MEMORY;
 
         try {
             assign_option(state, dev_opts, dev_id);
         } catch (const out_of_memory_error&) {
-            return false;
+            return NF9_ERR_OUT_OF_MEMORY;
         }
     }
     assert(state.options[dev_id]
@@ -144,15 +144,15 @@ bool save_option(nf9_state& state, device_id& dev_id, device_options& dev_opts)
                ->second.get_allocator()
                .resource() == state.memory.get());
 
-    return true;
+    return 0;
 }
 
-bool save_sampling_rate(nf9_state& state, sampler_id sid, uint32_t rate)
+int save_sampling_rate(nf9_state& state, sampler_id sid, uint32_t rate)
 {
     try {
         state.sampling_rates.insert_or_assign(sid, rate);
-        return true;
+        return 0;
     } catch (const out_of_memory_error&) {
-        return false;
+        return NF9_ERR_OUT_OF_MEMORY;
     }
 }

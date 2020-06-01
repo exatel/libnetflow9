@@ -12,6 +12,6 @@
 
 /* Extract sampling rate from given *options* flow and save it for given
  * Exporter device. */
-bool save_sampling_info(nf9_state& st, const flow& f, const device_id& did);
+int save_sampling_info(nf9_state& st, const flow& f, const device_id& did);
 
 #endif
