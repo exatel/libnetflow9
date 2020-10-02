@@ -419,6 +419,16 @@ typedef struct nf9_packet nf9_packet;
 typedef struct nf9_stats nf9_stats;
 
 /**
+ * @brief Structure that defines NetFlow field.
+ */
+typedef struct nf9_fieldval
+{
+    nf9_field field;      /**< field number */
+    size_t size;          /**< field size in bytes */
+    const uint8_t* value; /**< field value */
+} nf9_fieldval;
+
+/**
  * @brief Get an error message for an error code.
  *
  * The returned string mustn't be freed.
@@ -542,6 +552,27 @@ NF9_API size_t nf9_get_num_flows(const nf9_packet* pkt, unsigned flowset);
 NF9_API int nf9_get_field(const nf9_packet* pkt, unsigned flowset,
                           unsigned flownum, nf9_field field, void* dst,
                           size_t* length);
+
+/**
+ * @brief Get values of all fields from a Netflow data record.
+ * Obtained fields are valid as long as nf9_packet exists - they do not need
+ * to be freed.
+ *
+ * @pre @p flowset must be < `nf9_get_num_flowsets(pkt)`.
+ * @pre @p flow must be < `nf9_get_num_flows(pkt, flowset)`.
+ *
+ * @param pkt Decoded Netflow packet, created with nf9_decode().
+ * @param flowset Index of the flowset.
+ * @param flownum Index of the flow within the flowset.
+ * @param[out] out Pointer to a location where value of the fields will be
+ * written.
+ * @param[in,out] size Initially points to size of @p out.  On success,
+ * overwritten with number of fields written to @p out.
+ * @return 0 on success; on error, a value from enum ::nf9_error.
+ */
+NF9_API int nf9_get_all_fields(const nf9_packet* pkt, unsigned flowset,
+                               unsigned flownum, nf9_fieldval* out,
+                               size_t* size);
 
 /**
  * @brief Get the value of an option from a Netflow packet.

@@ -327,7 +327,7 @@ static int decode_flowset(context& ctx)
     if (!ctx.buf.get(&header, sizeof(header)))
         return NF9_ERR_MALFORMED;
 
-    size_t flowset_length = ntohs(header.length);
+    uint16_t flowset_length = ntohs(header.length);
 
     // The length must be at least 4 because each flowset has at
     // least two uint16_t fields: flowset_id and the length field

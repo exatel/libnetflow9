@@ -124,6 +124,28 @@ int nf9_get_field(const nf9_packet* pkt, unsigned flowset, unsigned flownum,
     return 0;
 }
 
+int nf9_get_all_fields(const nf9_packet* pkt, unsigned flowset,
+                       unsigned flownum, nf9_fieldval* out, size_t* size)
+{
+    if (flowset >= pkt->flowsets.size())
+        return NF9_ERR_INVALID_ARGUMENT;
+    if (flownum >= pkt->flowsets[flowset].flows.size())
+        return NF9_ERR_INVALID_ARGUMENT;
+
+    size_t i = 0;
+    for (const auto& [key, val] : pkt->flowsets[flowset].flows[flownum]) {
+        if (i >= *size)
+            break;
+        out[i].field = key;
+        out[i].size = val.size();
+        out[i].value = val.data();
+        ++i;
+    }
+
+    *size = i;
+    return 0;
+}
+
 int nf9_get_option(const nf9_packet* pkt, nf9_field field, void* dst,
                    size_t* length)
 {
