@@ -85,7 +85,7 @@ protected:
     nf9_state *state_;
 };
 
-// Objects of this class can build Netflow9 packets for unit tests.
+// Objects of this class can build NetFlow9 packets for unit tests.
 class netflow_packet_builder
 {
 public:
@@ -93,7 +93,7 @@ public:
     {
     }
 
-    // Set the Netflow version in header (default 9).
+    // Set the NetFlow version in header (default 9).
     netflow_packet_builder &set_netflow_version(uint16_t version)
     {
         version_ = version;

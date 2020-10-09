@@ -1,8 +1,8 @@
 # libnetflow9 #
 
-Netflow is a protocol which concisely describes traffic information
+NetFlow is a protocol which concisely describes traffic information
 that traversed a network router.  libnetflow9 is a library for decoding
-packets conforming to the Netflow9 format in order to extract meta
+packets conforming to the NetFlow9 format in order to extract meta
 information about the traffic.
 
 libnetflow9 is written in C++17, and has a compatible C API.
@@ -61,7 +61,7 @@ The examples are located in `examples` directory:
 
 - `examples/simple`
 
-  This example program will listen for Netflow packets on UDP port
+  This example program will listen for NetFlow packets on UDP port
   provided on the command line.  The example shows how you can use the
   library to inspect IPv4 flows:
   - Get the source and destination addresses
@@ -69,7 +69,7 @@ The examples are located in `examples` directory:
 
 - `examples/stats`
 
-  Like the simple example, this program listens for Netflow packets on
+  Like the simple example, this program listens for NetFlow packets on
   UDP port given on command line.  It demonstrates how you can extract
   statistics from the library, e.g. the number of cached data
   templates and memory usage.
@@ -79,7 +79,7 @@ The examples are located in `examples` directory:
 ## High level overview ##
 
 1. Create an instance of the decoder: `nf9_init()`
-2. Open a UDP socket and listen for Netflow packets
+2. Open a UDP socket and listen for NetFlow packets
 3. Feed received packet to the decoder: `nf9_decode()`.  This returns an
    `nf9_packet`.
 4. Inspect the packet - retrieve flow information, source
@@ -96,9 +96,9 @@ The library function prototypes are defined in `<netflow9.h>` header.
 
 ### Creating the decoder ###
 
-Netflow is a stateful protocol - in order to decode a packet you might
+NetFlow is a stateful protocol - in order to decode a packet you might
 need to have some of the previous packets, which contain templates for
-decoding.  You feed the library Netflow packets, and it caches the
+decoding.  You feed the library NetFlow packets, and it caches the
 templates and keeps them in memory.  In libnetflow, the object that
 holds these templates is called `nf9_state`, and it is created by the
 function `nf9_init()`.
@@ -158,9 +158,9 @@ result to `*packet`.
 
 ### Retrieving information from a packet ###
 
-#### Netflow packet structure ####
+#### NetFlow packet structure ####
 
-In Netflow9, every packet is divided into flowsets, and each flowset
+In NetFlow9, every packet is divided into flowsets, and each flowset
 is either a DATA flowset, DATA TEMPLATE flowset or an OPTIONS TEMPLATE
 flowset.
 
@@ -231,7 +231,7 @@ len = sizeof(in_bytes);
 if (nf9_get_field(packet, flowset, flownum, NF9_FIELD_IN_BYTES, &in_bytes, &len))
     continue;
 
-/* All Netflow field values are in network byte order */
+/* All NetFlow field values are in network byte order */
 in_bytes = ntohl(in_bytes);
 ```
 

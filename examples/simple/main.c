@@ -129,7 +129,7 @@ void process_netflow_packet(nf9_state *decoder, const uint8_t *buf, size_t size,
     int err;
 
     /* nf9_addr stores the IP address of the device that generated the
-     * Netflow packet.  */
+     * NetFlow packet.  */
     addr.family = AF_INET;
     addr.in = *source;
 
@@ -142,7 +142,7 @@ void process_netflow_packet(nf9_state *decoder, const uint8_t *buf, size_t size,
 
     /* Now we iterate over every flow in the packet.
      *
-     * In Netflow v9, a packet is made of 1 or more flowsets.  Each
+     * In NetFlow v9, a packet is made of 1 or more flowsets.  Each
      * flowset is either a data flowset, a template flowset or an
      * option flowset.  A data flowset may contain 0 or more flows.
      * The flows describe traffic between hosts.
@@ -190,7 +190,7 @@ int extract_flow(struct flow *flow, const nf9_packet *pkt, unsigned flowset,
      *
      * Because routers typically only sample one out of every N
      * packets, we also need to extract the N to get the _approximate_
-     * number of bytes.  In Netflow9, this is called 'sampling interval':
+     * number of bytes.  In NetFlow9, this is called 'sampling interval':
      *
      *   approx_in_bytes = IN_BYTES * SAMPLING_INTERVAL
      *

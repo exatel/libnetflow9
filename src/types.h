@@ -108,7 +108,7 @@ struct device_id
 /*
  * Objects of this type uniquely identify flow streams across all
  * exporter devices by using a combination of the exporter source IP
- * address, the source_id field in the Netflow header, and template id.
+ * address, the source_id field in the NetFlow header, and template id.
  */
 struct stream_id
 {

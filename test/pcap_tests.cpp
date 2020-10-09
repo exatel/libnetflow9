@@ -126,7 +126,7 @@ TEST_F(pcap_test, malformed_2_test)
 TEST_F(pcap_test, malformed_3_test)
 {
     /*
-     * The PCAP contains a Netflow packet where one option template
+     * The PCAP contains a NetFlow packet where one option template
      * has option length equals zero.
      */
     std::vector<packet> pkt = decode_pcap("testcases/malformed_3.pcap");
@@ -138,7 +138,7 @@ TEST_F(pcap_test, malformed_3_test)
 TEST_F(pcap_test, malformed_4_test)
 {
     /*
-     * The PCAP contains a Netflow packet where one flowset
+     * The PCAP contains a NetFlow packet where one flowset
      * has length that equals zero.
      */
     std::vector<packet> pkt = decode_pcap("testcases/malformed_4.pcap");
@@ -150,7 +150,7 @@ TEST_F(pcap_test, malformed_4_test)
 TEST_F(pcap_test, malformed_5_test)
 {
     /*
-     * The PCAP contains a Netflow packet where one flowset has no
+     * The PCAP contains a NetFlow packet where one flowset has no
      * option fields and scope field with length equals zero.
      */
     std::vector<packet> pkt = decode_pcap("testcases/malformed_5.pcap");
@@ -162,7 +162,7 @@ TEST_F(pcap_test, malformed_5_test)
 TEST_F(pcap_test, malformed_6_test)
 {
     /*
-     * The PCAP contains a Netflow packet where first flowset contains
+     * The PCAP contains a NetFlow packet where first flowset contains
      * normal option template but second has length that is greater than
      * zero and less than 4 bytes.
      */

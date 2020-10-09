@@ -61,7 +61,7 @@ enum nf9_error {
 };
 
 /**
- * @brief Flags controlling behavior of a Netflow decoder.
+ * @brief Flags controlling behavior of a NetFlow decoder.
  *
  * These are static decoder settings, they can only be set in the
  * initializer.
@@ -77,7 +77,7 @@ enum nf9_state_flag {
 };
 
 /**
- * @brief Type of a Netflow flowset.
+ * @brief Type of a NetFlow flowset.
  */
 enum nf9_flowset_type {
     NF9_FLOWSET_TEMPLATE,
@@ -86,7 +86,7 @@ enum nf9_flowset_type {
 };
 
 /**
- * @brief Statistics of a Netflow decoder.
+ * @brief Statistics of a NetFlow decoder.
  */
 enum nf9_stat {
 
@@ -132,7 +132,7 @@ enum nf9_stat {
 };
 
 /**
- * @brief Flags describing options of a Netflow decoder.
+ * @brief Flags describing options of a NetFlow decoder.
  */
 enum nf9_opt {
 
@@ -162,7 +162,7 @@ enum nf9_opt {
 };
 
 /**
- * @brief Holds the address of a device that generated a Netflow packet.
+ * @brief Holds the address of a device that generated a NetFlow packet.
  */
 typedef union nf9_addr {
     sa_family_t family;
@@ -439,9 +439,9 @@ typedef struct nf9_fieldval
 NF9_API const char* nf9_strerror(int err);
 
 /**
- * @brief Create a Netflow9 decoder.
+ * @brief Create a NetFlow9 decoder.
  *
- * The returned object holds Netflow templates and option values which
+ * The returned object holds NetFlow templates and option values which
  * are used to later decode data records.
  *
  * The returned object must be later freed with nf9_free().
@@ -452,16 +452,16 @@ NF9_API const char* nf9_strerror(int err);
 NF9_API nf9_state* nf9_init(int flags);
 
 /**
- * @brief Free a Netflow9 decoder.
+ * @brief Free a NetFlow9 decoder.
  *
  * @param state A state object created by nf9_init().
  */
 NF9_API void nf9_free(nf9_state* state);
 
 /**
- * @brief Decode a Netflow9 packet.
+ * @brief Decode a NetFlow9 packet.
  *
- * @p buf must point to a buffer which contains Netflow data
+ * @p buf must point to a buffer which contains NetFlow data
  * (e.g. received from a UDP socket), and @p addr must hold the
  * address of the packet sender.
  *
@@ -488,58 +488,58 @@ NF9_API int nf9_decode(nf9_state* state, nf9_packet** result,
 NF9_API void nf9_free_packet(const nf9_packet* result);
 
 /**
- * @brief Get the number of flowsets in a Netflow packet.
+ * @brief Get the number of flowsets in a NetFlow packet.
  *
- * @param pkt Decoded Netflow packet, created by nf9_decode().
+ * @param pkt Decoded NetFlow packet, created by nf9_decode().
  * @return Number of flowsets in @p pkt.
  */
 NF9_API size_t nf9_get_num_flowsets(const nf9_packet* pkt);
 
 /**
- * @brief Get the UNIX timestamp from a Netflow packet.
+ * @brief Get the UNIX timestamp from a NetFlow packet.
  *
- * @param pkt Decoded Netflow packet, created by nf9_decode().
- * @return UNIX timestamp in the Netflow header.
+ * @param pkt Decoded NetFlow packet, created by nf9_decode().
+ * @return UNIX timestamp in the NetFlow header.
  */
 NF9_API uint32_t nf9_get_timestamp(const nf9_packet* pkt);
 
 /**
- * @brief Get the system uptime in milliseconds from a Netflow packet.
+ * @brief Get the system uptime in milliseconds from a NetFlow packet.
  *
- * @param pkt Decoded Netflow packet, created by nf9_decode().
+ * @param pkt Decoded NetFlow packet, created by nf9_decode().
  * @return Uptime in milliseconds of the device that generated the packet.
  */
 NF9_API uint32_t nf9_get_uptime(const nf9_packet* pkt);
 
 /**
- * @brief Get the type of flowset in a Netflow packet.
+ * @brief Get the type of flowset in a NetFlow packet.
  *
  * @pre @p flowset must be < `nf9_get_num_flowsets(pkt)`.
  *
- * @param pkt Decoded Netflow packet, created with nf9_decode().
+ * @param pkt Decoded NetFlow packet, created with nf9_decode().
  * @param flowset Index of the flowset.
  * @return The flowset type - one of the values of enum ::nf9_flowset_type.
  */
 NF9_API int nf9_get_flowset_type(const nf9_packet* pkt, unsigned flowset);
 
 /**
- * @brief Get the number of flows in a specific flowset in a Netflow packet.
+ * @brief Get the number of flows in a specific flowset in a NetFlow packet.
  *
  * @pre @p flowset must be < `nf9_get_num_flowsets(pkt)`.
  *
- * @param pkt Decoded Netflow packet, created with nf9_decode().
+ * @param pkt Decoded NetFlow packet, created with nf9_decode().
  * @param flowset The flowset index.
  * @return Number of flows in the flowset.
  */
 NF9_API size_t nf9_get_num_flows(const nf9_packet* pkt, unsigned flowset);
 
 /**
- * @brief Get the value of a field from a Netflow data record.
+ * @brief Get the value of a field from a NetFlow data record.
  *
  * @pre @p flowset must be < `nf9_get_num_flowsets(pkt)`.
  * @pre @p flow must be < `nf9_get_num_flows(pkt, flowset)`.
  *
- * @param pkt Decoded Netflow packet, created with nf9_decode().
+ * @param pkt Decoded NetFlow packet, created with nf9_decode().
  * @param flowset Index of the flowset.
  * @param flownum Index of the flow within the flowset.
  * @param field The field ID - one of `NF9_FIELD_*`.
@@ -554,14 +554,14 @@ NF9_API int nf9_get_field(const nf9_packet* pkt, unsigned flowset,
                           size_t* length);
 
 /**
- * @brief Get values of all fields from a Netflow data record.
+ * @brief Get values of all fields from a NetFlow data record.
  * Obtained fields are valid as long as nf9_packet exists - they do not need
  * to be freed.
  *
  * @pre @p flowset must be < `nf9_get_num_flowsets(pkt)`.
  * @pre @p flow must be < `nf9_get_num_flows(pkt, flowset)`.
  *
- * @param pkt Decoded Netflow packet, created with nf9_decode().
+ * @param pkt Decoded NetFlow packet, created with nf9_decode().
  * @param flowset Index of the flowset.
  * @param flownum Index of the flow within the flowset.
  * @param[out] out Pointer to a location where value of the fields will be
@@ -575,9 +575,9 @@ NF9_API int nf9_get_all_fields(const nf9_packet* pkt, unsigned flowset,
                                size_t* size);
 
 /**
- * @brief Get the value of an option from a Netflow packet.
+ * @brief Get the value of an option from a NetFlow packet.
  *
- * @param pkt Decoded Netflow packet.
+ * @param pkt Decoded NetFlow packet.
  * @param field The option to get, one of `NF9_FIELD_*`.
  * @param[out] dst Pointer to location where value of the option will be
  * written.
@@ -589,12 +589,12 @@ NF9_API int nf9_get_option(const nf9_packet* pkt, nf9_field field, void* dst,
                            size_t* length);
 
 /**
- * @brief Get the sampling rate used for a flow within a Netflow packet.
+ * @brief Get the sampling rate used for a flow within a NetFlow packet.
  *
  * @pre @p flowset must be < `nf9_get_num_flowsets(pkt)`.
  * @pre @p flow must be < `nf9_get_num_flows(pkt, flowset)`.
  *
- * @param pkt Decoded Netflow packet, created with nf9_decode().
+ * @param pkt Decoded NetFlow packet, created with nf9_decode().
  * @param flowset Index of the flowset.
  * @param flownum Index of the flow within the flowset.
  * @param[out] sampling The sampling rate.
@@ -604,7 +604,7 @@ NF9_API int nf9_get_sampling_rate(const nf9_packet* pkt, unsigned flowset,
                                   unsigned flownum, uint32_t* sampling);
 
 /**
- * @brief Get statistics of a Netflow decoder.
+ * @brief Get statistics of a NetFlow decoder.
  *
  * The returned object must be freed with nf9_free_stats() when it's
  * no longer used.
@@ -623,14 +623,14 @@ NF9_API const nf9_stats* nf9_get_stats(const nf9_state* state);
 NF9_API uint64_t nf9_get_stat(const nf9_stats* stats, int stat);
 
 /**
- * @brief Free Netflow decoder statistics.
+ * @brief Free NetFlow decoder statistics.
  *
  * @param stats Object returned from nf9_get_stats().
  */
 NF9_API void nf9_free_stats(const nf9_stats* stats);
 
 /**
- * @brief Set Netflow9 decoder options.
+ * @brief Set NetFlow9 decoder options.
  *
  * @param state Decoder object created by nf9_init().
  * @param opt The option to set (one of the values of enum ::nf9_opt).

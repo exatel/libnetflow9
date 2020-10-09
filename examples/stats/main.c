@@ -39,7 +39,7 @@ const char *usage =
 static void process(nf9_state *decoder, const uint8_t *buf, size_t size,
                     const struct sockaddr_in *source);
 
-/* Print Netflow statistics: number of templates, option templates, etc. */
+/* Print NetFlow statistics: number of templates, option templates, etc. */
 static void print_stats(const nf9_state *decoder);
 
 int main(int argc, char **argv)
