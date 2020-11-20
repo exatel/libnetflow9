@@ -693,3 +693,99 @@ TEST_F(test, storing_sampling_rates)
     ret = nf9_get_sampling_rate(pkt.get(), 0, 2, &sampling);
     ASSERT_EQ(ret, NF9_ERR_NOT_FOUND);
 }
+
+// Test sampling rates: FLOW_SAMPLER_ID - 1 byte, _INTERVAL - 4 bytes
+TEST_F(test, storing_sampling_rates_2)
+{
+    const int option_template_id = 1000;
+    std::vector<uint8_t> packet_bytes;
+    nf9_addr addr = make_inet_addr("192.192.192.193");
+
+    // Option template
+    packet_bytes =
+        netflow_packet_builder()
+            .add_option_template_flowset(option_template_id)
+            .add_option_field(NF9_FIELD_FLOW_SAMPLER_ID, 1)
+            .add_option_field(NF9_FIELD_FLOW_SAMPLER_RANDOM_INTERVAL, 4)
+            .build();
+    decode(packet_bytes.data(), packet_bytes.size(), &addr);
+
+    // Option values
+    packet_bytes = netflow_packet_builder()
+                       .add_data_flowset(option_template_id)
+                       // ID = 1, rate = 123456
+                       .add_data_field(uint8_t(1))
+                       .add_data_field(htonl(123456))
+                       .build();
+    decode(packet_bytes.data(), packet_bytes.size(), &addr);
+
+    // Data template
+    packet_bytes = netflow_packet_builder()
+                       .add_data_template_flowset(0)
+                       .add_data_template(257)
+
+                       // Notice that this field here has 4 bytes, but in option
+                       // template it has one.  That should not matter.
+                       .add_data_template_field(NF9_FIELD_FLOW_SAMPLER_ID, 4)
+                       .build();
+    decode(packet_bytes.data(), packet_bytes.size(), &addr);
+
+    // Example data flow.
+    packet_bytes = netflow_packet_builder()
+                       .add_data_flowset(257)
+                       .add_data_field(htonl(1))  // SamplerID: 1
+                       .build();
+    packet pkt = decode(packet_bytes.data(), packet_bytes.size(), &addr);
+    ASSERT_NE(pkt, nullptr);
+
+    uint32_t sampling;
+    int ret = nf9_get_sampling_rate(pkt.get(), 0, 0, &sampling);
+    ASSERT_EQ(ret, 0);
+    ASSERT_EQ(sampling, 123456);
+}
+
+// Test sampling rates: FLOW_SAMPLER_ID - 4 bytes, _INTERVAL - 2 bytes
+TEST_F(test, storing_sampling_rates_3)
+{
+    const int option_template_id = 1000;
+    std::vector<uint8_t> packet_bytes;
+    nf9_addr addr = make_inet_addr("192.192.192.193");
+
+    // Option template
+    packet_bytes =
+        netflow_packet_builder()
+            .add_option_template_flowset(option_template_id)
+            .add_option_field(NF9_FIELD_FLOW_SAMPLER_ID, 4)
+            .add_option_field(NF9_FIELD_FLOW_SAMPLER_RANDOM_INTERVAL, 2)
+            .build();
+    decode(packet_bytes.data(), packet_bytes.size(), &addr);
+
+    // Option values
+    packet_bytes = netflow_packet_builder()
+                       .add_data_flowset(option_template_id)
+                       // ID = 43, rate = 500
+                       .add_data_field(htonl(43))
+                       .add_data_field(htons(500))
+                       .build();
+    decode(packet_bytes.data(), packet_bytes.size(), &addr);
+
+    // Data template
+    packet_bytes = netflow_packet_builder()
+                       .add_data_template_flowset(0)
+                       .add_data_template(257)
+                       .add_data_template_field(NF9_FIELD_FLOW_SAMPLER_ID, 1)
+                       .build();
+    decode(packet_bytes.data(), packet_bytes.size(), &addr);
+
+    packet_bytes = netflow_packet_builder()
+                       .add_data_flowset(257)
+                       .add_data_field(uint8_t(43))  // SamplerID: 43
+                       .build();
+    packet pkt = decode(packet_bytes.data(), packet_bytes.size(), &addr);
+    ASSERT_NE(pkt, nullptr);
+
+    uint32_t sampling;
+    int ret = nf9_get_sampling_rate(pkt.get(), 0, 0, &sampling);
+    ASSERT_EQ(ret, 0);
+    ASSERT_EQ(sampling, 500);
+}

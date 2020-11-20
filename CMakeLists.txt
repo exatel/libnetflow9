@@ -72,6 +72,9 @@ if(NOT NF9_HAVE_MEMORY_RESOURCE AND NOT NF9_HAVE_EXPERIMENTAL_MEMORY_RESOURCE)
     "Could not find required <memory_resource> or <experimental/memory_resource> headers")
 endif()
 
+include(TestBigEndian)
+test_big_endian(NF9_IS_BIG_ENDIAN)
+
 configure_file("${PROJECT_SOURCE_DIR}/config.h.in" "${CMAKE_CURRENT_BINARY_DIR}/config.h")
 target_include_directories(netflow9 PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 

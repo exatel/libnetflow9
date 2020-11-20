@@ -6,6 +6,7 @@
 
 #include <netflow9.h>
 #include <netinet/in.h>
+#include <climits>
 #include <cstring>
 #include <mutex>
 #include <vector>
@@ -176,23 +177,30 @@ int nf9_get_sampling_rate(const nf9_packet* pkt, unsigned flowset,
         return NF9_ERR_NOT_FOUND;
 
     // Get SAMPLER_ID from the flow
-    uint16_t stored_sid;
+    uint32_t stored_sid;
     size_t len = sizeof(stored_sid);
     if (nf9_get_field(pkt, flowset, flownum, NF9_FIELD_FLOW_SAMPLER_ID,
                       &stored_sid, &len))
         return NF9_ERR_NOT_FOUND;
-    stored_sid = ntohs(stored_sid);
+
+#ifdef NF9_IS_BIG_ENDIAN
+    stored_sid >>= (sizeof(stored_sid) - len) * CHAR_BIT;
+#else
+    stored_sid <<= (sizeof(stored_sid) - len) * CHAR_BIT;
+#endif
+    stored_sid = ntohl(stored_sid);
 
     // Lookup the value in stored sampling rates
     device_id dev_id = {pkt->addr, pkt->src_id};
     sampler_id sid = {dev_id, stored_sid};
-    if (st->sampling_rates.count(sid) == 0)
+    if (auto it = st->sampling_rates.find(sid);
+        it != st->sampling_rates.end()) {
+        *sampling = it->second;
+
+        return 0;
+    }
+    else
         return NF9_ERR_NOT_FOUND;
-
-    uint32_t rate = st->sampling_rates.at(sid);
-    *sampling = rate;
-
-    return 0;
 }
 
 void nf9_free_packet(const nf9_packet* pkt)

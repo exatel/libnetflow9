@@ -122,7 +122,7 @@ struct stream_id
 struct sampler_id
 {
     device_id did;
-    uint16_t sid;
+    uint32_t sid;
 };
 
 template <>
