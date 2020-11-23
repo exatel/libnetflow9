@@ -483,9 +483,9 @@ NF9_API int nf9_decode(nf9_state* state, nf9_packet** result,
 /**
  * @brief Free a packet.
  *
- * @param result Result created in nf9_decode().
+ * @param pkt Packet created in nf9_decode().
  */
-NF9_API void nf9_free_packet(const nf9_packet* result);
+NF9_API void nf9_free_packet(const nf9_packet* pkt);
 
 /**
  * @brief Get the number of flowsets in a NetFlow packet.
