@@ -125,6 +125,15 @@ struct sampler_id
     uint32_t sid;
 };
 
+/*
+ * Identifies a sampler using only IP address and Sampler ID
+ */
+struct simple_sampler_id
+{
+    nf9_addr addr;
+    uint32_t id;
+};
+
 template <>
 struct std::hash<stream_id>
 {
@@ -143,9 +152,16 @@ struct std::hash<sampler_id>
     size_t operator()(const sampler_id &) const noexcept;
 };
 
+template <>
+struct std::hash<simple_sampler_id>
+{
+    size_t operator()(const simple_sampler_id &) const noexcept;
+};
+
 bool operator==(const stream_id &, const stream_id &) noexcept;
 bool operator==(const device_id &, const device_id &) noexcept;
 bool operator==(const sampler_id &, const sampler_id &) noexcept;
+bool operator==(const simple_sampler_id &, const simple_sampler_id &) noexcept;
 
 struct nf9_state
 {
@@ -163,6 +179,7 @@ struct nf9_state
 
     bool store_sampling_rates;
     pmr::unordered_map<sampler_id, uint32_t> sampling_rates;
+    pmr::unordered_map<simple_sampler_id, uint32_t> simple_sampling_rates;
 };
 
 struct flowset

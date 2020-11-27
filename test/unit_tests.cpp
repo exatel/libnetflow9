@@ -789,3 +789,58 @@ TEST_F(test, storing_sampling_rates_3)
     ASSERT_EQ(ret, 0);
     ASSERT_EQ(sampling, 500);
 }
+
+// Test simple_sampling rates: source_id not matched
+TEST_F(test, storing_simple_sampling_rates)
+{
+    const int option_template_id = 1000;
+    std::vector<uint8_t> packet_bytes;
+    nf9_addr addr = make_inet_addr("192.192.192.193");
+
+    // Option template
+    packet_bytes =
+        netflow_packet_builder()
+            .add_option_template_flowset(option_template_id)
+            .set_source_id(50)
+            .add_option_field(NF9_FIELD_FLOW_SAMPLER_ID, 1)
+            .add_option_field(NF9_FIELD_FLOW_SAMPLER_RANDOM_INTERVAL, 4)
+            .build();
+    decode(packet_bytes.data(), packet_bytes.size(), &addr);
+
+    // Option values
+    packet_bytes = netflow_packet_builder()
+                       .add_data_flowset(option_template_id)
+                       .set_source_id(50)
+                       // ID = 1, rate = 123
+                       .add_data_field(uint8_t(1))
+                       .add_data_field(htonl(123))
+                       .build();
+    decode(packet_bytes.data(), packet_bytes.size(), &addr);
+
+    // Data template
+    packet_bytes =
+        netflow_packet_builder()
+            .add_data_template_flowset(0)
+            // Notice: source ID differs from the one in option template
+            .set_source_id(51)
+            .add_data_template(257)
+            .add_data_template_field(NF9_FIELD_FLOW_SAMPLER_ID, 4)
+            .build();
+    decode(packet_bytes.data(), packet_bytes.size(), &addr);
+
+    // Example data flow.
+    packet_bytes =
+        netflow_packet_builder()
+            .add_data_flowset(257)
+            // Notice: source ID differs from the one in option template
+            .set_source_id(51)
+            .add_data_field(htonl(1))  // SamplerID: 1
+            .build();
+    packet pkt = decode(packet_bytes.data(), packet_bytes.size(), &addr);
+    ASSERT_NE(pkt, nullptr);
+
+    uint32_t sampling;
+    int ret = nf9_get_sampling_rate(pkt.get(), 0, 0, &sampling);
+    ASSERT_EQ(ret, 0);
+    ASSERT_EQ(sampling, 123);
+}

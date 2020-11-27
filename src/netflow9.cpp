@@ -51,6 +51,8 @@ nf9_state* nf9_init(int flags)
         /*options_mutex=*/{},
         /*store_samplings=*/bool(flags & NF9_STORE_SAMPLING_RATES),
         /*sampling_rates=*/pmr::unordered_map<sampler_id, uint32_t>(addr),
+        /*simple_sampling_rates=*/
+        pmr::unordered_map<simple_sampler_id, uint32_t>(addr),
     };
 
     return st;
@@ -193,14 +195,21 @@ int nf9_get_sampling_rate(const nf9_packet* pkt, unsigned flowset,
     // Lookup the value in stored sampling rates
     device_id dev_id = {pkt->addr, pkt->src_id};
     sampler_id sid = {dev_id, stored_sid};
-    if (auto it = st->sampling_rates.find(sid);
-        it != st->sampling_rates.end()) {
-        *sampling = it->second;
+    if (auto sid_it = st->sampling_rates.find(sid);
+        sid_it != st->sampling_rates.end()) {
+        *sampling = sid_it->second;
 
         return 0;
     }
-    else
-        return NF9_ERR_NOT_FOUND;
+
+    simple_sampler_id simple_sid = {dev_id.addr, stored_sid};
+    if (auto simple_sid_it = st->simple_sampling_rates.find(simple_sid);
+        simple_sid_it != st->simple_sampling_rates.end()) {
+        *sampling = simple_sid_it->second;
+        return 0;
+    }
+
+    return NF9_ERR_NOT_FOUND;
 }
 
 void nf9_free_packet(const nf9_packet* pkt)
@@ -275,25 +284,25 @@ int nf9_ctl(nf9_state* state, int opt, long value)
     return NF9_ERR_INVALID_ARGUMENT;
 }
 
-size_t std::hash<device_id>::operator()(const device_id& dev_id) const noexcept
+size_t hash_nf9addr_id(const nf9_addr& addr, uint32_t id) noexcept
 {
-    size_t ret = dev_id.id;
+    size_t ret = id;
 
-    switch (dev_id.addr.family) {
+    switch (addr.family) {
         case AF_INET:
-            ret ^= dev_id.addr.in.sin_addr.s_addr;
-            ret ^= uint32_t(dev_id.addr.in.sin_port) << 16;
+            ret ^= addr.in.sin_addr.s_addr;
+            ret ^= uint32_t(addr.in.sin_port) << 16;
             break;
         case AF_INET6: {
             // FIXME: The IPv6 address should be normalized here, this is not
             // reliable.
-            const sockaddr_in6& addr = dev_id.addr.in6;
+            const sockaddr_in6& addr_in = addr.in6;
             const size_t* parts =
-                reinterpret_cast<const size_t*>(&addr.sin6_addr);
-            const size_t n = sizeof(addr.sin6_addr) / sizeof(size_t);
+                reinterpret_cast<const size_t*>(&addr_in.sin6_addr);
+            const size_t n = sizeof(addr_in.sin6_addr) / sizeof(size_t);
             for (size_t i = 0; i < n; i++)
                 ret ^= parts[i];
-            ret ^= addr.sin6_port;
+            ret ^= addr_in.sin6_port;
             break;
         }
         default:
@@ -303,7 +312,8 @@ size_t std::hash<device_id>::operator()(const device_id& dev_id) const noexcept
     return ret;
 }
 
-bool operator==(const device_id& lhs, const device_id& rhs) noexcept
+template <typename T>
+bool compare_nf9addr_id(const T& lhs, const T& rhs) noexcept
 {
     if (lhs.id != rhs.id || lhs.addr.family != rhs.addr.family)
         return false;
@@ -320,6 +330,16 @@ bool operator==(const device_id& lhs, const device_id& rhs) noexcept
                    lhs.addr.in6.sin6_port == rhs.addr.in6.sin6_port;
     }
     return true;
+}
+
+size_t std::hash<device_id>::operator()(const device_id& dev_id) const noexcept
+{
+    return hash_nf9addr_id(dev_id.addr, dev_id.id);
+}
+
+bool operator==(const device_id& lhs, const device_id& rhs) noexcept
+{
+    return compare_nf9addr_id(lhs, rhs);
 }
 
 size_t std::hash<stream_id>::operator()(const stream_id& sid) const noexcept
@@ -346,4 +366,16 @@ size_t std::hash<sampler_id>::operator()(const sampler_id& sid) const noexcept
 bool operator==(const sampler_id& lhs, const sampler_id& rhs) noexcept
 {
     return lhs.did == rhs.did && lhs.sid == rhs.sid;
+}
+
+size_t std::hash<simple_sampler_id>::operator()(
+    const simple_sampler_id& simple_sid) const noexcept
+{
+    return hash_nf9addr_id(simple_sid.addr, simple_sid.id);
+}
+
+bool operator==(const simple_sampler_id& lhs,
+                const simple_sampler_id& rhs) noexcept
+{
+    return compare_nf9addr_id(lhs, rhs);
 }

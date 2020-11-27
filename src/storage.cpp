@@ -147,10 +147,13 @@ int save_option(nf9_state& state, device_id& dev_id, device_options& dev_opts)
     return 0;
 }
 
-int save_sampling_rate(nf9_state& state, sampler_id sid, uint32_t rate)
+int save_sampling_rate(nf9_state& state, const device_id& did, uint32_t sid,
+                       uint32_t rate)
 {
     try {
-        state.sampling_rates.insert_or_assign(sid, rate);
+        state.sampling_rates.insert_or_assign(sampler_id{did, sid}, rate);
+        state.simple_sampling_rates.insert_or_assign(
+            simple_sampler_id{did.addr, sid}, rate);
         return 0;
     } catch (const out_of_memory_error&) {
         return NF9_ERR_OUT_OF_MEMORY;

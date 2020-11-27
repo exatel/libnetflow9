@@ -4,9 +4,9 @@
  * LICENSE: LGPL-3.0-or-later, See COPYING*.md files.
  */
 
+#include "sampling.h"
 #include <climits>
 #include <cstring>
-#include "sampling.h"
 #include "storage.h"
 
 static int extract_u32_field(const flow& f, nf9_field field, uint32_t* dst)
@@ -55,8 +55,7 @@ int save_sampling_info(nf9_state& st, const flow& f, const device_id& did)
         return err;
     }
 
-    if (int err = save_sampling_rate(st, sampler_id{did, sampler}, rate);
-        err != 0)
+    if (int err = save_sampling_rate(st, did, sampler, rate); err != 0)
         return err;
 
     return 0;

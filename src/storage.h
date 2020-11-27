@@ -21,6 +21,7 @@ int save_template(data_template& tmpl, stream_id& sid, nf9_state& state,
 
 int save_option(nf9_state& state, device_id& dev_id, device_options& dev_opts);
 
-int save_sampling_rate(nf9_state& state, sampler_id sid, uint32_t rate);
+int save_sampling_rate(nf9_state& state, const device_id& did, uint32_t sid,
+                       uint32_t rate);
 
 #endif
