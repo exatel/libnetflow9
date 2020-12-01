@@ -94,7 +94,7 @@ c_nf9_get_option.restype = ctypes.c_int
 
 c_nf9_get_sampling_rate = lib.nf9_get_sampling_rate
 c_nf9_get_sampling_rate.argtypes = [ctypes.POINTER(nf9_packet), ctypes.c_uint, ctypes.c_uint,
-                                    ctypes.POINTER(ctypes.c_uint32)]
+                                    ctypes.POINTER(ctypes.c_uint32), ctypes.POINTER(ctypes.c_int)]
 c_nf9_get_sampling_rate.restype = ctypes.c_int
 
 c_nf9_get_stats = lib.nf9_get_stats

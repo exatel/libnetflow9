@@ -215,7 +215,7 @@ int extract_flow(struct flow *flow, const nf9_packet *pkt, unsigned flowset,
         return 1;
 
     /* And the multiplier for the number of bytes - which defaults to 1. */
-    if (nf9_get_sampling_rate(pkt, flowset, flownum, &sampling))
+    if (nf9_get_sampling_rate(pkt, flowset, flownum, &sampling, NULL))
         sampling = 1;
 
     flow->bytes = ntohl(flow->bytes) * sampling;

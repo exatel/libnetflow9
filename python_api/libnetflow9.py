@@ -58,6 +58,16 @@ class NF9FlowsetType(IntEnum):
     NF9_FLOWSET_DATA = 2
 
 
+class NF9SamplingInfo(IntEnum):
+    """
+    Additional info about sampling obtaining methods and errors
+    """
+    NF9_SAMPLING_MATCH_IP_SOURCE_ID_SAMPLER_ID = 1
+    NF9_SAMPLING_MATCH_IP_SAMPLER_ID = 2
+    NF9_SAMPLING_SAMPLER_ID_NOT_FOUND = 3
+    NF9_SAMPLING_OPTION_RECORD_NOT_FOUND = 4
+
+
 def strerror(error_code):
     """
     Get an error message for an error code.
@@ -66,20 +76,20 @@ def strerror(error_code):
     return error_name.decode("utf-8")
 
 
-def error_code_to_exception(error_code):
+def error_code_to_exception(error_code, msg=""):
     """
     Return exception that matches given error code
     """
     if error_code == 1:
-        return NF9InvalidArgumentError(strerror(error_code))
+        return NF9InvalidArgumentError(strerror(error_code) + msg)
     if error_code == 2:
-        return NF9NotFoundError(strerror(error_code))
+        return NF9NotFoundError(strerror(error_code) + msg)
     if error_code == 3:
-        return NF9OutOfMemoryError(strerror(error_code))
+        return NF9OutOfMemoryError(strerror(error_code) + msg)
     if error_code == 4:
-        return NF9MalformedError(strerror(error_code))
+        return NF9MalformedError(strerror(error_code) + msg)
     if error_code == 5:
-        return NF9OutdatedError(strerror(error_code))
+        return NF9OutdatedError(strerror(error_code) + msg)
 
     return NF9Error("unknown error")
 
@@ -176,14 +186,17 @@ class NF9Packet:
 
     def get_sampling_rate(self, flowset, flownum):
         """
-        Get the sampling rate used for a flow within a NetFlow packet.
+        Get the sampling rate, and sampling_info used for a flow within a NetFlow packet.
         """
         sampling = ctypes.c_uint32()
-        err = c_nf9_get_sampling_rate(self.c_nf9_pkt, flowset, flownum, sampling)
+        sampling_info = ctypes.c_int()
+        err = c_nf9_get_sampling_rate(self.c_nf9_pkt, flowset, flownum, sampling, sampling_info)
         if err:
-            raise error_code_to_exception(err)
+            info = NF9SamplingInfo(sampling_info.value)
+            msg = " - error_details: " + info.name
+            raise error_code_to_exception(err, msg)
 
-        return sampling
+        return sampling, NF9SamplingInfo(sampling_info)
 
 
 class LibNetflow9:

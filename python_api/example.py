@@ -155,10 +155,10 @@ def main():
     # try to get sampling rate, and catch an exception, because sampling was not provided
     # in crafted packets
     try:
-        sampling = nf9_pkt.get_sampling_rate(second_flowset, first_flow)
-        print(sampling)
-    except NF9NotFoundError:
-        print("Sampling not provided")
+        sampling, sampling_info = nf9_pkt.get_sampling_rate(second_flowset, first_flow)
+        print(sampling, sampling_info)
+    except NF9NotFoundError as err:
+        print("Sampling not provided: " + err.args[0])
 
 
 if __name__ == '__main__':

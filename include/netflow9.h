@@ -61,6 +61,33 @@ enum nf9_error {
 };
 
 /**
+ * @brief More info about sampling obtaining methods and errors
+ */
+enum nf9_sampling_info {
+    /**
+     * Sampling from option template matched with data record by IP address,
+     * Source ID and Sampler ID. It's matching opion recommended by Cisco.
+     */
+    NF9_SAMPLING_MATCH_IP_SOURCE_ID_SAMPLER_ID = 1,
+
+    /**
+     * Sampling from option template matched with data record by IP address,
+     * and Sampler ID. It is used when Source IDs are different.
+     */
+    NF9_SAMPLING_MATCH_IP_SAMPLER_ID = 2,
+
+    /**
+     * Sampler ID not found in data record
+     */
+    NF9_SAMPLING_SAMPLER_ID_NOT_FOUND = 3,
+
+    /**
+     * No matching option template has been found
+     */
+    NF9_SAMPLING_OPTION_RECORD_NOT_FOUND = 4,
+};
+
+/**
  * @brief Flags controlling behavior of a NetFlow decoder.
  *
  * These are static decoder settings, they can only be set in the
@@ -593,15 +620,19 @@ NF9_API int nf9_get_option(const nf9_packet* pkt, nf9_field field, void* dst,
  *
  * @pre @p flowset must be < `nf9_get_num_flowsets(pkt)`.
  * @pre @p flow must be < `nf9_get_num_flows(pkt, flowset)`.
+ * @pre Flag NF9_STORE_SAMPLING_RATES need to be set in nf9_init().
  *
  * @param pkt Decoded NetFlow packet, created with nf9_decode().
  * @param flowset Index of the flowset.
  * @param flownum Index of the flow within the flowset.
  * @param[out] sampling The sampling rate.
+ * @param[out] sampling_info Detailed information about sampling obtaining
+ * methods and errors. A value from enum ::nf9_sampling_info.
  * @return 0 on success; on error, a value from enum ::nf9_error.
  */
 NF9_API int nf9_get_sampling_rate(const nf9_packet* pkt, unsigned flowset,
-                                  unsigned flownum, uint32_t* sampling);
+                                  unsigned flownum, uint32_t* sampling,
+                                  int* sampling_info);
 
 /**
  * @brief Get statistics of a NetFlow decoder.

@@ -172,18 +172,26 @@ int nf9_get_option(const nf9_packet* pkt, nf9_field field, void* dst,
 }
 
 int nf9_get_sampling_rate(const nf9_packet* pkt, unsigned flowset,
-                          unsigned flownum, uint32_t* sampling)
+                          unsigned flownum, uint32_t* sampling,
+                          int* sampling_info)
 {
+    bool set_sampling_info = true;
+    if (sampling_info == nullptr)
+        set_sampling_info = false;
+
     const nf9_state* st = pkt->state;
     if (!st->store_sampling_rates)
-        return NF9_ERR_NOT_FOUND;
+        return NF9_ERR_INVALID_ARGUMENT;
 
     // Get SAMPLER_ID from the flow
     uint32_t stored_sid;
     size_t len = sizeof(stored_sid);
     if (nf9_get_field(pkt, flowset, flownum, NF9_FIELD_FLOW_SAMPLER_ID,
-                      &stored_sid, &len))
+                      &stored_sid, &len)) {
+        if (set_sampling_info)
+            *sampling_info = NF9_SAMPLING_SAMPLER_ID_NOT_FOUND;
         return NF9_ERR_NOT_FOUND;
+    }
 
 #ifdef NF9_IS_BIG_ENDIAN
     stored_sid >>= (sizeof(stored_sid) - len) * CHAR_BIT;
@@ -198,17 +206,24 @@ int nf9_get_sampling_rate(const nf9_packet* pkt, unsigned flowset,
     if (auto sid_it = st->sampling_rates.find(sid);
         sid_it != st->sampling_rates.end()) {
         *sampling = sid_it->second;
-
+        if (set_sampling_info)
+            *sampling_info = NF9_SAMPLING_MATCH_IP_SOURCE_ID_SAMPLER_ID;
         return 0;
     }
 
+    // Lookup the value in stored simple sampling rates -
+    // don't match by source_id
     simple_sampler_id simple_sid = {dev_id.addr, stored_sid};
     if (auto simple_sid_it = st->simple_sampling_rates.find(simple_sid);
         simple_sid_it != st->simple_sampling_rates.end()) {
         *sampling = simple_sid_it->second;
+        if (set_sampling_info)
+            *sampling_info = NF9_SAMPLING_MATCH_IP_SAMPLER_ID;
         return 0;
     }
 
+    if (set_sampling_info)
+        *sampling_info = NF9_SAMPLING_OPTION_RECORD_NOT_FOUND;
     return NF9_ERR_NOT_FOUND;
 }
 

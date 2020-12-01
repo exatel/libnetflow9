@@ -254,7 +254,7 @@ To get the sampling rate, pass `NF9_STORE_SAMPLING_RATES` flag to
 ```c
 uint32_t sampling;
 
-nf9_get_sampling_rate(packet, flowset, flownum, &sampling);
+nf9_get_sampling_rate(packet, flowset, flownum, &sampling, NULL);
 ```
 
 And now to get the approximate value for the number of bytes

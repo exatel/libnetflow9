@@ -678,20 +678,24 @@ TEST_F(test, storing_sampling_rates)
     ASSERT_NE(pkt, nullptr);
 
     uint32_t sampling;
+    int sampling_info;
 
     // Check sampling for first flow
-    int ret = nf9_get_sampling_rate(pkt.get(), 0, 0, &sampling);
+    int ret = nf9_get_sampling_rate(pkt.get(), 0, 0, &sampling, &sampling_info);
     ASSERT_EQ(ret, 0);
     ASSERT_EQ(sampling, 100);
+    ASSERT_EQ(sampling_info, NF9_SAMPLING_MATCH_IP_SOURCE_ID_SAMPLER_ID);
 
     // Sampling for second flow
-    ret = nf9_get_sampling_rate(pkt.get(), 0, 1, &sampling);
+    ret = nf9_get_sampling_rate(pkt.get(), 0, 1, &sampling, &sampling_info);
     ASSERT_EQ(ret, 0);
     ASSERT_EQ(sampling, 1000);
+    ASSERT_EQ(sampling_info, NF9_SAMPLING_MATCH_IP_SOURCE_ID_SAMPLER_ID);
 
     // Undefined sampling
-    ret = nf9_get_sampling_rate(pkt.get(), 0, 2, &sampling);
+    ret = nf9_get_sampling_rate(pkt.get(), 0, 2, &sampling, &sampling_info);
     ASSERT_EQ(ret, NF9_ERR_NOT_FOUND);
+    ASSERT_EQ(sampling_info, NF9_SAMPLING_OPTION_RECORD_NOT_FOUND);
 }
 
 // Test sampling rates: FLOW_SAMPLER_ID - 1 byte, _INTERVAL - 4 bytes
@@ -739,7 +743,7 @@ TEST_F(test, storing_sampling_rates_2)
     ASSERT_NE(pkt, nullptr);
 
     uint32_t sampling;
-    int ret = nf9_get_sampling_rate(pkt.get(), 0, 0, &sampling);
+    int ret = nf9_get_sampling_rate(pkt.get(), 0, 0, &sampling, NULL);
     ASSERT_EQ(ret, 0);
     ASSERT_EQ(sampling, 123456);
 }
@@ -785,9 +789,11 @@ TEST_F(test, storing_sampling_rates_3)
     ASSERT_NE(pkt, nullptr);
 
     uint32_t sampling;
-    int ret = nf9_get_sampling_rate(pkt.get(), 0, 0, &sampling);
+    int sampling_info;
+    int ret = nf9_get_sampling_rate(pkt.get(), 0, 0, &sampling, &sampling_info);
     ASSERT_EQ(ret, 0);
     ASSERT_EQ(sampling, 500);
+    ASSERT_EQ(sampling_info, NF9_SAMPLING_MATCH_IP_SOURCE_ID_SAMPLER_ID);
 }
 
 // Test simple_sampling rates: source_id not matched
@@ -840,7 +846,9 @@ TEST_F(test, storing_simple_sampling_rates)
     ASSERT_NE(pkt, nullptr);
 
     uint32_t sampling;
-    int ret = nf9_get_sampling_rate(pkt.get(), 0, 0, &sampling);
+    int sampling_info;
+    int ret = nf9_get_sampling_rate(pkt.get(), 0, 0, &sampling, &sampling_info);
     ASSERT_EQ(ret, 0);
     ASSERT_EQ(sampling, 123);
+    ASSERT_EQ(sampling_info, NF9_SAMPLING_MATCH_IP_SAMPLER_ID);
 }
