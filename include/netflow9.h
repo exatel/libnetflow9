@@ -531,6 +531,14 @@ NF9_API size_t nf9_get_num_flowsets(const nf9_packet* pkt);
 NF9_API uint32_t nf9_get_timestamp(const nf9_packet* pkt);
 
 /**
+ * @brief Get the source ID from a NetFlow packet.
+ *
+ * @param pkt Decoded NetFlow packet, created by nf9_decode().
+ * @return Source ID in the NetFlow header.
+ */
+NF9_API uint32_t nf9_get_source_id(const nf9_packet* pkt);
+
+/**
  * @brief Get the system uptime in milliseconds from a NetFlow packet.
  *
  * @param pkt Decoded NetFlow packet, created by nf9_decode().

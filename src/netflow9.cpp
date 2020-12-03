@@ -101,6 +101,11 @@ uint32_t nf9_get_timestamp(const nf9_packet* pkt)
     return pkt->timestamp;
 }
 
+uint32_t nf9_get_source_id(const nf9_packet* pkt)
+{
+    return pkt->src_id;
+}
+
 uint32_t nf9_get_uptime(const nf9_packet* pkt)
 {
     return pkt->system_uptime;
