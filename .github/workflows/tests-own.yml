@@ -1,0 +1,46 @@
+# Build tests using external libraries referencd by the project
+name: TestsOwnLibs
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Debug
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install libpcap
+      run: sudo apt-get install -y libpcap-dev
+    
+    - name: Initialize submodules
+      run: git submodule init && git submodule update
+
+    - name: Build libtins library
+      run: |
+        cd ${{github.workspace}}/external/libtins && mkdir build && \
+          cd build && cmake ..  -DLIBTINS_ENABLE_CXX11=1 && cmake --build .
+
+    - name: Configure CMake
+      run: |
+        cmake -B ${{github.workspace}}/build \
+          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DNF9_BUILD_TESTS=ON \
+          -DNF9_USE_OWN_LIBTINS=ON -DNF9_USE_OWN_GTEST=ON
+
+    - name: Build Tests
+      run: |
+        cmake --build ${{github.workspace}}/build \
+          --config ${{env.BUILD_TYPE}}
+
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      run: ./test/netflowtests
+      # ctest -C ${{env.BUILD_TYPE}}
