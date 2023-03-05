@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.7)
 project(libnetflow C CXX)
 
 option(NF9_MAKE_SHARED "If set, build a shared library version" ON)
-option(NF9_BUILD_TESTS "If set, build unit tests (requires googletest)" ON)
+option(NF9_BUILD_TESTS "If set, build unit tests (requires googletest)" OFF)
 option(NF9_FUZZ "Enable fuzzing with LLVM fuzzer" OFF)
 option(NF9_BUILD_BENCHMARK
   "If set, build benchmarks (requires google benchmark library)" OFF)
