@@ -33,6 +33,21 @@ cmake ..
 make -j4
 ```
 
+## Building on MacOS M1
+
+```
+mkdir build
+cd build
+cmake .. -DCMAKE_C_COMPILER=/opt/homebrew/bin/gcc-12 -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/g++-12
+cmake --build .
+```
+
+Otherwise it defaults to Clang toolset, which as of version:  
+
+Apple clang version 14.0.0 (clang-1400.0.29.202)  
+
+is incapable of compiling the library.
+
 ## Building and running tests ##
 
 ```console
