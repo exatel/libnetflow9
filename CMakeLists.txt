@@ -29,7 +29,9 @@ else ()
   add_library(netflow9 STATIC ${CXX_SRC})
 endif ()
 
-target_include_directories(netflow9 SYSTEM PUBLIC include)
+target_include_directories(netflow9 SYSTEM PUBLIC include
+	"/home/ec2-user/cpp/libnetflow9/test/../../libtins/include/"
+	)
 target_compile_features(netflow9 PRIVATE cxx_std_17)
 
 if (MSVC)

@@ -3,7 +3,9 @@ cmake_minimum_required(VERSION 3.7)
 enable_testing()
 find_package(GTest REQUIRED)
 
-find_library(LIBTINS_LIBRARIES tins)
+get_property(SRC_DIR DIRECTORY PROPERTY SOURCE_DIR)
+message(STATUS "tins libs:" ${SRC_DIR}/../../libtins/build/lib/)
+find_library(LIBTINS_LIBRARIES tins ${SRC_DIR}/../../libtins/build/lib/)
 
 file(GLOB src *.cpp)
 add_executable(netflowtests ${src})
