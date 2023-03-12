@@ -1,3 +1,0 @@
-[submodule "external/external/libtins"]
-	path = external/external/libtins
-	url = https://github.com/mfontanini/libtins.git
