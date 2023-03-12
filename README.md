@@ -9,6 +9,8 @@ libnetflow9 is written in C++17, and has a compatible C API.
 
 # Building #
 
+![build workflow](https://github.com/doodeck/libnetflow9/actions/workflows/cmake.yml/badge.svg)
+
 ## Dependencies ##
 
 Besides a C++17 compiler and CMake there are no additional
