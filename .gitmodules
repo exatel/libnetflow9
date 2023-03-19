@@ -1,0 +1,3 @@
+[submodule "external/libtins"]
+	path = external/libtins
+	url = git@github.com:doodeck/libtins.git
