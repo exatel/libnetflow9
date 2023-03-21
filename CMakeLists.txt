@@ -29,9 +29,12 @@ else ()
   add_library(netflow9 STATIC ${CXX_SRC})
 endif ()
 
+get_property(SRC_DIR DIRECTORY PROPERTY SOURCE_DIR)
+message(STATUS "tins include:" ${SRC_DIR}/external/libtins/include/)
+
 target_include_directories(netflow9 SYSTEM PUBLIC include
-	"/home/ec2-user/cpp/libnetflow9/test/../../libtins/include/"
-	)
+  ${SRC_DIR}/external/libtins/include/
+)
 target_compile_features(netflow9 PRIVATE cxx_std_17)
 
 if (MSVC)
