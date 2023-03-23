@@ -25,10 +25,17 @@ git submodule init && git submodule update
 sudo apt update
 sudo apt-get install -y libpcap-dev
 sudo apt-get install -y googletest # ???
-# libpthread-workqueue-dev
 cd external/libtins
 mkdir build && cd build
 git submodule init && git submodule update # to pull libnetflow9/external/libtins/googletest
 cmake ..  -DLIBTINS_ENABLE_CXX11=1
 cmake --build .
+# Now tests
+# sudo apt-get install libpthread-workqueue-dev
+# sudo apt-get install libpthread-workqueue0
+# sudo apt-get install libpthread-stubs0-dev
+cd ../../build
+cmake .. -DNF9_BUILD_TESTS=ON
+cmake --build .
+./test/netflowtests
 ```
