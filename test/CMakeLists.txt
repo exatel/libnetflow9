@@ -5,7 +5,7 @@ include(FetchContent)
 FetchContent_Declare(
   googletest
   # Specify the commit you depend on and update it regularly.
-  URL https://github.com/google/googletest/archive/5376968f6948923e2411081fd9372e71a59d8e77.zip
+  URL https://github.com/google/googletest/archive/refs/tags/v1.13.0.zip
   # FIND_PACKAGE_ARGS NAMES GTest
 )
 # For Windows: Prevent overriding the parent project's compiler/linker settings
