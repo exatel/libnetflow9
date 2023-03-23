@@ -7,9 +7,16 @@ information about the traffic.
 
 libnetflow9 is written in C++17, and has a compatible C API.
 
-# Building #
+## Badges ##
+
+### Building ###
 
 ![build workflow](https://github.com/doodeck/libnetflow9/actions/workflows/cmake.yml/badge.svg)
+
+### Testing ###
+
+![test workflow](https://github.com/doodeck/libnetflow9/actions/workflows/tests.yml/badge.svg)
+
 
 ## Dependencies ##
 
