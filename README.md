@@ -11,13 +11,13 @@ libnetflow9 is written in C++17, and has a compatible C API.
 
 ### Building ###
 
-![build workflow](https://github.com/doodeck/libnetflow9/actions/workflows/cmake.yml/badge.svg)
+![build workflow](https://github.com/exatel/libnetflow9/actions/workflows/cmake.yml/badge.svg)
 
 ### Testing ###
 
-![test workflow sys](https://github.com/doodeck/libnetflow9/actions/workflows/tests.yml/badge.svg)
+![test workflow sys](https://github.com/exatel/libnetflow9/actions/workflows/tests.yml/badge.svg)
 
-![test workflow own](https://github.com/doodeck/libnetflow9/actions/workflows/tests-own.yml/badge.svg)
+![test workflow own](https://github.com/exatel/libnetflow9/actions/workflows/tests-own.yml/badge.svg)
 
 
 ## Dependencies ##
