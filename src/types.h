@@ -11,6 +11,7 @@
 #include <netinet/in.h>
 #include <iostream>
 #include <mutex>
+#include <memory> // unique_ptr
 
 #include "config.h"
 

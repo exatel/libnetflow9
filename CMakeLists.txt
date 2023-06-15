@@ -7,6 +7,8 @@ option(NF9_FUZZ "Enable fuzzing with LLVM fuzzer" OFF)
 option(NF9_BUILD_BENCHMARK
   "If set, build benchmarks (requires google benchmark library)" OFF)
 option(NF9_BUILD_EXAMPLES "If set, build examples" OFF)
+option(NF9_USE_OWN_LIBTINS "If set, use the libtins in the submodule" OFF)
+option(NF9_USE_OWN_GTEST "If set, use googtest library from github" OFF)
 
 include(CheckCXXCompilerFlag)
 include(CheckIncludeFileCXX)
@@ -29,7 +31,15 @@ else ()
   add_library(netflow9 STATIC ${CXX_SRC})
 endif ()
 
-target_include_directories(netflow9 SYSTEM PUBLIC include)
+if (NOT NF9_USE_OWN_LIBTINS)
+  target_include_directories(netflow9 SYSTEM PUBLIC include)
+else ()
+  get_property(SRC_DIR DIRECTORY PROPERTY SOURCE_DIR)
+  target_include_directories(netflow9 SYSTEM PUBLIC include
+    ${SRC_DIR}/external/libtins/include/
+  )
+endif()
+
 target_compile_features(netflow9 PRIVATE cxx_std_17)
 
 if (MSVC)
